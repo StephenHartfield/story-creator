@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
-import { Button, List, Typography } from '@mui/material';
-import { Requirement } from './RepliesCreator';
+import { Button, Typography } from '@mui/material';
+import { Requirement } from './replies/RepliesCreator';
 
 interface RequirementProps {
     addRequirement: (req: Requirement) => void;

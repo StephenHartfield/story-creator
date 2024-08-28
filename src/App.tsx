@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import './App.css'
 import Creator from './creation/Creator'
 
@@ -11,4 +10,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, TextField, Grid, Box, Typography } from "@mui/material";
-import RequirementHandler from './RequirementHandler';
+import RequirementHandler from '../RequirementHandler';
 import { Reply, Requirement } from "./RepliesCreator";
 
 interface ReplyRowProps {

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { IconButton, Button, TextField, Modal, Box } from '@mui/material';
+import { IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import styled from '@emotion/styled';
-import ChapterSelector from './ChapterSelector';
-import { SelectedSection } from './Creator';
-import Requirement from './RequirementHandler';
+import ChapterSelector from '../chapters/ChapterSelector';
+import { SelectedSection } from '../Creator';
+import Requirement from '../RequirementHandler';
 import ReplyRow from './ReplyRow';
 
 export interface Reply {
@@ -61,31 +61,30 @@ const RepliesCreator: React.FC<SelectedSection> = (props: SelectedSection) => {
     }
 
     return (
-        <RepliesCreatorContainer>
-            {/* Section Text */}
-            <SectionText>{props.text}</SectionText>
+        <Wrapper>
+            <RepliesCreatorContainer>
+                {/* Section Text */}
+                <SectionText>{props.text}</SectionText>
 
-            {/* Dynamic Replies */}
-            {replies.map((reply, index) => (
-                <ReplyContainer key={index}>
-                    <ReplyRow updateReply={(rep: Reply) => updateReply(rep, index)} index={index} reply={reply} toggleChapterSelector={() => toggleChapterSelector(index)} />
-                    <IconButton onClick={() => removeReply(index)}>
-                        <RemoveIcon />
-                    </IconButton>
-                </ReplyContainer>
-            ))}
-            <IconButton onClick={() => addReply()}>
-                <AddIcon />
-            </IconButton>
-
+                {/* Dynamic Replies */}
+                {replies.map((reply, index) => (
+                    <ReplyContainer key={index}>
+                        <ReplyRow updateReply={(rep: Reply) => updateReply(rep, index)} index={index} reply={reply} toggleChapterSelector={() => toggleChapterSelector(index)} />
+                        <IconButton onClick={() => removeReply(index)}>
+                            <RemoveIcon />
+                        </IconButton>
+                    </ReplyContainer>
+                ))}
+                <IconButton onClick={() => addReply()}>
+                    <AddIcon />
+                </IconButton>
+            </RepliesCreatorContainer>
             {chapterSelectorOpen && <ChapterSelector setSelectionId={(id: string) => setLinkTo(id)} isSelectingChapter={false} isSelectingSection={true} />}
-        </RepliesCreatorContainer>
+        </Wrapper>
     );
 };
 
 export default RepliesCreator;
-
-// Styled Components
 
 const RepliesCreatorContainer = styled.div`
   padding: 20px;
@@ -104,14 +103,6 @@ const ReplyContainer = styled.div`
   margin-bottom: 10px;
 `;
 
-const ModalContent = styled(Box)`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: #fff;
-  border: 2px solid #000;
-  box-shadow: 24px;
-  padding: 16px;
-  width: 80%;
+const Wrapper = styled.div`
+    display: flex;
 `;

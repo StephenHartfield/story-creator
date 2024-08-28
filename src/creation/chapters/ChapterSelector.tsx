@@ -5,11 +5,14 @@ import {
     ListItem,
     ListItemText,
     Collapse,
+    Button,
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import ReplyIcon from '@mui/icons-material/StarRate';
 import styled from '@emotion/styled';
+import { Chapter } from '../routes/Chapters';
+import { useNavigate } from 'react-router-dom';
 
 interface Section {
     id: string;
@@ -19,58 +22,34 @@ interface Section {
     replies?: any;
 }
 
-export interface Chapter {
-    id: string;
-    title: string;
-    number: number;
-    sections: Section[];
-}
-
 interface SelectorProps {
     isSelectingChapter: boolean;
     isSelectingSection: boolean;
     setSelectionId: any;
+    chapters: Chapter[];
 }
 
-const chaptersData: Chapter[] = [
-    {
-        title: 'Chapter 1',
-        number: 1,
-        id: 'mockc1',
-        sections: [
-            { number: 1, id: 'mocks1', text: 'This is the first sentence of section 1.1', image: 'https://via.placeholder.com/50', replies: true },
-            { number: 2, id: 'mocks2', text: 'This is the first sentence of section 1.2 and it goes like this with a paddie wack ', image: 'https://via.placeholder.com/50', replies: false }
-        ]
-    },
-    {
-        title: 'Chapter 2',
-        number: 2,
-        id: 'mockc2',
-        sections: [
-            { number: 1, id: 'mock22', text: 'The section 2.1 first sentence starts here...', image: 'https://via.placeholder.com/50', replies: true }
-        ]
-    }
-];
 
 const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
-    const [openChapters, setOpenChapters] = useState<number[]>([]); // Tracks which chapters are expanded.
+    const [openChapters, setOpenChapters] = useState<number[]>([]);
+    const navigate = useNavigate();
 
     const toggleChapter = (index: number) => {
-        if (props.isSelectingChapter) {
-            const matched = chaptersData.find((_, i) => i === index);
-            if (matched?.id) {
-                props.setSelectionId(matched.id);
-            } else {
-                console.error('couldnt find chapter');
-            }
-            return;
-        }
         if (openChapters.includes(index)) {
             setOpenChapters(openChapters.filter(i => i !== index));
         } else {
             setOpenChapters([...openChapters, index]);
         }
     };
+
+    const editChapter = (index: number) => {
+        const matched = props.chapters.find((_, i) => i === index);
+        if (matched?.id) {
+            props.setSelectionId(matched.id);
+        } else {
+            console.error('couldnt find chapter');
+        }
+    }
 
     const handleSectionClick = (sectionId: string) => {
         if (props.isSelectingSection) {
@@ -79,39 +58,42 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
         console.log(`Section ID: ${sectionId}`);
     };
 
+    const handleCreateNew = () => {
+        navigate('new');
+    }
+
 
     return (
         <ChapterSelectorContainer>
 
             {/* Chapter list that opens relative to the button */}
             <ChaptersContainer>
-                <List>
-                    {chaptersData.map((chapter, index) => (
+                {props.chapters.length ? <List>
+                    {props.chapters.map((chapter, index) => (
                         <div key={'chapter-' + index}>
 
                             {/* ListItem for each chapter */}
                             <StyledListItem $chapter $isSelectable={props.isSelectingChapter} onClick={() => toggleChapter(index)}>
                                 <ListItemText primary={chapter.title} />
-                                {!props.isSelectingChapter && (openChapters.includes(index) ? <ExpandLess /> : <ExpandMore />)}
+                                {openChapters.includes(index) ? <ExpandLess /> : <ExpandMore />}
+                                {props.isSelectingChapter && openChapters.includes(index) && <ActionButton onClick={() => editChapter(index)}>EDIT</ActionButton>}
                             </StyledListItem>
 
                             {/* Collapsible List for sections */}
                             <Collapse in={openChapters.includes(index)} timeout="auto" unmountOnExit>
                                 <List component="div" disablePadding>
-                                    {chapter.sections.map((section, secIndex) => (
+                                    {chapter.pages && chapter.pages.map((section, secIndex) => (
                                         <StyledListItem key={'section-' + secIndex}
                                             $isSelectable={props.isSelectingSection}
                                             onClick={() => handleSectionClick(section.id)}>
-                                            {/* Section number and first sentence */}
+
                                             <SectionText>
                                                 <SectionNumber>{chapter.number}.{section.number}</SectionNumber>
                                                 {section.text}
                                             </SectionText>
-
-                                            {/* Thumbnail */}
+                                    
                                             <ThumbnailImage src={section.image} alt={`Section ${section.number}`} />
 
-                                            {/* Hamburger button for replies */}
                                             {section.replies && (
                                                 <RepliesButton edge="end">
                                                     <ReplyIcon />
@@ -123,13 +105,21 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
                             </Collapse>
                         </div>
                     ))}
-                </List>
+                </List> : <SectionText>No Chapters to Display</SectionText>}
             </ChaptersContainer>
+            <AddButton onClick={handleCreateNew} variant="outlined">New Chapter</AddButton>
         </ChapterSelectorContainer>
     );
 };
 
 export default ChapterSelector;
+
+
+const AddButton = styled(Button)`
+    background-color: lightgreen;
+    color: purple;
+    margin-top: 20px;
+`;
 
 const ChapterSelectorContainer = styled.div`
   position: relative;
@@ -168,6 +158,15 @@ const ThumbnailImage = styled.img`
 
 const RepliesButton = styled(IconButton)`
   margin-left: auto;
+`;
+
+const ActionButton = styled(Button)`
+  background-color: #17a2b8;
+  color: white;
+
+  &:hover {
+    background-color: #138496;
+  }
 `;
 
 const StyledListItem = styled(ListItem) <{ $isSelectable: boolean, $chapter?: boolean }>`

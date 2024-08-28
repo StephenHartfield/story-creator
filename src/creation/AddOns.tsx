@@ -52,6 +52,14 @@ const AddOns: React.FC = () => {
   const [currenciesOpen, setCurrenciesOpen] = useState<boolean>(false);
   const [itemsOpen, setItemsOpen] = useState<boolean>(false);
   const [enemiesOpen, setEnemiesOpen] = useState<boolean>(false);
+  // Loops for battles - perhaps a configuration of how random the hits/damage is for crits and the like
+  // transitions - can have requirement/effects
+  // Game Title screen
+  // Additional artwork
+  // images could probably go here as well
+  // maybe on replies / sections there can be a button  - ADD TO REUSABLES - and there's a list here of reusables
+  // timers on single page and timers on collection of pages
+  // save game sections
 
   // Toggle the main menu
   const toggleMenu = () => setMenuOpen(!menuOpen);

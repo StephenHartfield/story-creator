@@ -2,56 +2,31 @@ import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Chapter } from './ChapterSelector';
-import { SelectedSection } from './Creator';
+// import { Chapter } from './ChapterSelector';
+import { SelectedSection } from '../Creator';
 
 interface Section {
   text: string;
   image: string;
 }
 
-const chaptersData: Chapter[] = [
-  {
-      title: 'Chapter 1',
-      number: 1,
-      id: 'mockc1',
-      sections: [
-          { number: 1, id: 'mocks1', text: 'This is the first sentence of section 1.1', image: 'https://via.placeholder.com/50', replies: true },
-          { number: 2, id: 'mocks2', text: 'This is the first sentence of section 1.2 and it goes like this with a paddie wack ', image: 'https://via.placeholder.com/50', replies: false }
-      ]
-  },
-  {
-      title: 'Chapter 2',
-      number: 2,
-      id: 'mockc2',
-      sections: [
-          { number: 1, id: 'mock22', text: 'The section 2.1 first sentence starts here...', image: 'https://via.placeholder.com/50', replies: true }
-      ]
-  }
-];
 
-interface CreatorProps {
-  setCurrentImages: Dispatch<SetStateAction<string[]>>;
-  setSelectedSection: Dispatch<SetStateAction<SelectedSection | undefined>>;
-  currentImages: string[];
-  selectedChapter?: string;
-}
-
-const FormSections: React.FC<CreatorProps> = (props: CreatorProps) => {
+const FormSections = () => {
   const [title, setTitle] = useState<string>('');
   const [sections, setSections] = useState<Section[]>([{ text: '', image: '' }]);
-  const [chapterData, setChapterData] = useState<Chapter>();
+  // const [chapterData, setChapterData] = useState<Chapter>();
 
-  useEffect(() => {
-    if ( props.selectedChapter ) {
-      const matched = chaptersData.find( ch => ch.id===props.selectedChapter );
-      if ( matched?.id ) {
-        setChapterData(matched);
-        setTitle(matched.title);
-        setSections(matched.sections.map( s => ({text: s.text, image: s.image}) )); 
-      }
-    }
-  }, [props.selectedChapter]);
+  // useEffect(() => {
+    //get cselected chapter id from route.
+    // if ( props.selectedChapter ) {
+    //   const matched = chaptersData.find( ch => ch.id===props.selectedChapter );
+    //   if ( matched?.id ) {
+    //     setChapterData(matched);
+    //     setTitle(matched.title);
+    //     setSections(matched.sections.map( s => ({text: s.text, image: s.image}) )); 
+    //   }
+    // }
+  // }, [props.selectedChapter]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -76,7 +51,7 @@ const FormSections: React.FC<CreatorProps> = (props: CreatorProps) => {
     if (event.target.files) {
       const newSections = [...sections];
       const imageUrls = Array.from(event.target.files).map(file => URL.createObjectURL(file));
-      props.setCurrentImages([...props.currentImages, imageUrls[0]]);
+      // props.setCurrentImages([...props.currentImages, imageUrls[0]]);
       newSections[index].image = imageUrls[0];
       setSections(newSections);
     }
@@ -90,16 +65,16 @@ const FormSections: React.FC<CreatorProps> = (props: CreatorProps) => {
 
   const addReplies = ( index: number ) => {
     // possible if they're just creating it, then section won't have an id
-    if (!chapterData) {
+    // if (!chapterData) {
       // create id by saving the chapter/section
-    }
-    const matchedSection = chapterData?.sections.find( (_, i) => i===index );
-    if( matchedSection?.id ) {
-      props.setSelectedSection({id: matchedSection.id, text: matchedSection.text});
-    } else {
+    // }
+    // const matchedSection = chapterData?.sections.find( (_, i) => i===index );
+    // if( matchedSection?.id ) {
+    //   props.setSelectedSection({id: matchedSection.id, text: matchedSection.text});
+    // } else {
       // test purposes only
-      props.setSelectedSection({id: 'mocktestid', text: sections[0].text})
-    }
+      // props.setSelectedSection({id: 'mocktestid', text: sections[0].text})
+    // }
   }
 
   return (
@@ -121,7 +96,7 @@ const FormSections: React.FC<CreatorProps> = (props: CreatorProps) => {
               value={section.text}
               onChange={(e) => handleSectionChange(index, e.target.value)}
               rows={4}
-              placeholder={`Section ${index + 1}`}
+              placeholder={`Screen ${index + 1}`}
             />
             <ActionButtons>
               <input
