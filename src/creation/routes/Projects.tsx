@@ -1,4 +1,4 @@
-import { collection, DocumentData, getDocs, query, QuerySnapshot, where } from "firebase/firestore";
+import { collection, doc, getCountFromServer, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { db } from "../../firebaseConfig";
 import Loading from "../../Loading";
@@ -8,6 +8,7 @@ import styled from '@emotion/styled';
 import { Button } from "@mui/material";
 import CreateProject from "../projects/CreateProject";
 import { projectDBKey } from "../Creator";
+import { chapterDBKey } from "./Chapters";
 
 export interface Project {
     id: string;
@@ -45,7 +46,30 @@ const Projects: React.FC<ProjectsProps> = ({ userId, projects, activeProject, se
 
     useEffect(() => {
         setLProjects(projects);
+        getStats();  
     }, [projects]);
+
+    const getStats = async() => {
+        const lPCopy = [...lProjects];
+        if ( activeProject ) {
+            const mActiveProject = lPCopy.find( p => p.id===activeProject.id );
+            if ( mActiveProject ) {
+                try {
+                    const q = query(collection(db, chapterDBKey), where("projectId", "==", activeProject?.id));
+                    const ss = await getCountFromServer(q);
+                    const chapterCount = ss.data().count;
+                    mActiveProject.chapterCount = chapterCount;
+                    await updateDoc(doc(db, projectDBKey, mActiveProject.id), {...mActiveProject});
+    
+                    const filtered = lPCopy.filter( p => p.id!==activeProject.id );
+                    filtered.unshift(mActiveProject);
+                    setLProjects(filtered);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+    }
 
     const fetchProjects = async () => {
         try {
@@ -78,8 +102,13 @@ const Projects: React.FC<ProjectsProps> = ({ userId, projects, activeProject, se
     };
 
     const selectProject = (proj: ProjectSlim) => {
-        activeProject?.id === proj?.id ? setActiveProject(undefined) : setActiveProject(proj);
-        localStorage.setItem(`${userId}-active-project`, proj.id);
+        if (activeProject?.id === proj?.id) {
+            setActiveProject(undefined)
+            localStorage.removeItem(`${userId}-active-project`);
+        } else {
+            setActiveProject(proj);
+            localStorage.setItem(`${userId}-active-project`, proj.id);
+        }
     }
 
     const createProject = () => {

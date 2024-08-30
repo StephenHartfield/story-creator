@@ -47,7 +47,10 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
     }
 
     const complete = () => {
-        const completed = { addedAs: addonSelector, type: requirementType, value, keyWord, greaterThan };
+        const completed: any = { addedAs: addonSelector, type: requirementType, value, keyWord };
+        if (greaterThan !== undefined) {
+            completed['greaterThan'] = greaterThan; 
+        }
         props.addRequirement(completed);
         setAddonSelector(undefined);
         setRequirementType(undefined);

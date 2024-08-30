@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { IconButton } from '@mui/material';
+import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Button, IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import styled from '@emotion/styled';
 import ChapterSelector from '../chapters/ChapterSelector';
-import { SelectedSection } from '../Creator';
 import Requirement from '../RequirementHandler';
 import ReplyRow from './ReplyRow';
+import { Screen } from '../routes/SingleChapter';
 
 export interface Reply {
+    id: string;
+    order: number;
     text?: string;
+    screenId: string;
     linkToSectionId?: string;
     requirements: Requirement[];
     effects: Requirement[];
@@ -23,22 +26,28 @@ export interface Requirement {
     greaterThan?: boolean;
 }
 
-export const initialReply = {text: '', linkToSectionId: '', requirements: [], effects: []};
+interface RepliesCProps {
+    submit: (repls: Reply[], scrn: Screen) => Promise<void>;
+    screen: Screen;
+    replies: Reply[];
+    addReply: () => {};
+    removeReply: (id: string) => {};
+    setReplies: Dispatch<SetStateAction<Reply[]>>;
+}
 
-const RepliesCreator: React.FC<SelectedSection> = (props: SelectedSection) => {
-    const [replies, setReplies] = useState<Reply[]>([initialReply]); // Initial state with one reply.
+
+const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
+    const [replies, setReplies] = useState<Reply[]>([]);
+    const [screen, setScreen] = useState<Screen>();
     const [chapterSelectorOpen, setChapterSelectorOpen] = useState<boolean>(false);
     const [indexToAddLinkTo, setIndexToAddLinkTo] = useState<number>();
 
-    const addReply = () => {
-        const rp = {text:'', linkToSectionId:'', requirements: [], effects: []};
-        setReplies([...replies, rp]);
-    };
-
-    const removeReply = (index: number) => {
-        const updatedReplies = replies.filter((_, i) => i !== index);
-        setReplies(updatedReplies);
-    };
+    useEffect(() => {
+        setReplies(props.replies);
+        if (props.screen?.id) {
+            setScreen(props.screen);
+        }
+    }, [props.replies, props.screen])
 
     const toggleChapterSelector = (index: number) => {
         setIndexToAddLinkTo(index);
@@ -58,28 +67,35 @@ const RepliesCreator: React.FC<SelectedSection> = (props: SelectedSection) => {
         const updatedReplies = [...replies];
         updatedReplies[index] = rep;
         setReplies(updatedReplies);
+        props.setReplies(updatedReplies);
     }
 
     return (
         <Wrapper>
             <RepliesCreatorContainer>
                 {/* Section Text */}
-                <SectionText>{props.text}</SectionText>
+                <SectionText>{props.screen?.text}</SectionText>
 
                 {/* Dynamic Replies */}
                 {replies.map((reply, index) => (
                     <ReplyContainer key={index}>
                         <ReplyRow updateReply={(rep: Reply) => updateReply(rep, index)} index={index} reply={reply} toggleChapterSelector={() => toggleChapterSelector(index)} />
-                        <IconButton onClick={() => removeReply(index)}>
+                        <IconButton onClick={() => props.removeReply(reply.id)}>
                             <RemoveIcon />
                         </IconButton>
                     </ReplyContainer>
                 ))}
-                <IconButton onClick={() => addReply()}>
+                <IconButton onClick={props.addReply}>
                     <AddIcon />
                 </IconButton>
+            {screen && screen.id && <SubmitButton onClick={() => props.submit(replies, screen)} variant="outlined">Submit Replies</SubmitButton>}
             </RepliesCreatorContainer>
-            {chapterSelectorOpen && <ChapterSelector setSelectionId={(id: string) => setLinkTo(id)} isSelectingChapter={false} isSelectingSection={true} />}
+            {chapterSelectorOpen && (
+                <span>open chapter selector</span>
+                // <ChapterSelector setSelectionId={(id: string) => setLinkTo(id)}
+                //     isSelectingChapter={false}
+                //     isSelectingSection={true} />
+            )}
         </Wrapper>
     );
 };
@@ -90,6 +106,13 @@ const RepliesCreatorContainer = styled.div`
   padding: 20px;
   display: flex;
   flex-direction: column;
+`;
+
+const SubmitButton = styled(Button)`
+    background-color: lightgreen;
+    color: purple;
+    margin-top: 20px;
+    margin: 0 auto;
 `;
 
 const SectionText = styled.h2`

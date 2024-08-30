@@ -7,6 +7,7 @@ import Chapters from './routes/Chapters';
 import Auth from './routes/Auth';
 import Projects, { Project, ProjectSlim } from './routes/Projects';
 import SingleChapter from './routes/SingleChapter';
+import SingleScreen from './routes/SingleScreen';
 
 interface NavProps {
   user: any;
@@ -66,14 +67,15 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
           <LoginButton to="/login">{user && user.email ? 'LOG OUT' : 'LOG IN'}</LoginButton>
         </TopNav>
 
-        {/* <Breadcrumbs /> */}
+        <Breadcrumbs />
 
         <Content>
           <Base>
             <Routes>
               <Route path="/projects" element={<Projects userId={user?.uid} projects={projects} activeProject={activeProject} setActiveProject={setActiveProject}/>} />
-              <Route path="/chapters" element={<Chapters activeProject={activeProject} />} />
-              <Route path='/chapters/new' element={<SingleChapter activeProject={activeProject} />} />
+              <Route path="/chapters" element={<Chapters userId={user?.uid} activeProject={activeProject} />} />
+              <Route path='/chapters/:chapterId' element={<SingleChapter activeProject={activeProject} />} />
+              <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen activeProject={activeProject} />} />
               <Route path="/login" element={<Auth />} />
               {/* <Route path="/pages" element={<Pages />} />
                         <Route path="/replies" element={<Replies />} />
@@ -129,7 +131,7 @@ const Container = styled.div`
 
 const LeftSidebar = styled.div`
   position: absolute;
-  top: 20px;
+  top: 0;
   left: 0;
   height: 100%;
   width: 200px;

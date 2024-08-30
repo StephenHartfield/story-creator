@@ -96,7 +96,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
       </Box>
 
       <Box mt={3}>
-        {props.reply.requirements.length > 0 && (
+        {props.reply?.requirements?.length > 0 && (
           <Box mb={1}>
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Requirements:</Typography>
             {props.reply.requirements.map((req, index) => (
@@ -107,7 +107,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
           </Box>
         )}
 
-        {props.reply.effects.length > 0 && (
+        {props.reply?.effects?.length > 0 && (
           <Box>
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Effects:</Typography>
             {props.reply.effects.map((ef, index) => (

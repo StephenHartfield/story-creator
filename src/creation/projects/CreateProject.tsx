@@ -3,6 +3,7 @@ import { TextField, Button } from '@mui/material';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import Loading from '../../Loading';
+import { projectDBKey } from '../Creator';
 
 interface ProjectFormProps {
     userId: string;
@@ -39,7 +40,7 @@ const CreateProject: React.FC<ProjectFormProps> = ({ userId, exit }) => {
                 soundCount: 0
             };
 
-            await addDoc(collection(db, 'projects'), project);
+            await addDoc(collection(db, projectDBKey), project);
             setMsg('Successfully Created ' + title + ' project!');
             setTitle('');
 
