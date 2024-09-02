@@ -10,16 +10,8 @@ export interface Chapter {
     id: string;
     title: string;
     order: number;
-    screens?: PageSimple[];
-    background?: string;
-}
-
-export interface PageSimple {
-    text: string;
     image?: string;
-    replies?: boolean;
-    id: string;
-    number: number;
+    imageLocal?: string;
 }
 
 export const chapterDBKey = 'chapters';

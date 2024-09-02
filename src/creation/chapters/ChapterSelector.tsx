@@ -16,7 +16,8 @@ import { ProjectSlim } from '../routes/Projects';
 import { useNavigate } from 'react-router-dom';
 import { Screen, screenDBKey } from '../routes/SingleChapter';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import { db, storage } from '../../firebaseConfig';
+import { getDownloadURL, ref } from 'firebase/storage';
 
 interface Section {
     id: string;
@@ -31,9 +32,9 @@ interface SelectorProps {
     isSelectingSection: boolean;
     setSelectionId: any;
     chapters: Chapter[];
-    activeProject: ProjectSlim | undefined;
-    createChapter: () => void;
-    deleteChapter: (id: string) => void;
+    activeProject?: ProjectSlim | undefined;
+    createChapter?: () => void;
+    deleteChapter?: (id: string) => void;
 }
 
 
@@ -50,10 +51,15 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
             try {
                 const q = query(collection(db, screenDBKey), where("chapterId", "==", props.chapters[index].id));
                 const querySnapshot = await getDocs(q);
-                const screensList = querySnapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as Screen[];
+                const screensList = await Promise.all( querySnapshot.docs.map(async(doc) => {
+                    if (doc.data().image) {
+                        const fileRef = ref(storage, doc.data().image);
+                        const url = await getDownloadURL(fileRef);
+                        return { ...doc.data(), id: doc.id, imageLocal: url} as Screen;
+                    } else {
+                        return {id: doc.id, ...doc.data()} as Screen;
+                    }
+                }));
                 if (screensList.length) {
                     const sorted = screensList.sort((a, b) => a.order - b.order);
                     setScreens(sorted);
@@ -69,7 +75,9 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
     }
 
     const deleteChapter = (id: string) => {
-        props.deleteChapter(id);
+        if ( props.deleteChapter ) {
+            props.deleteChapter(id);
+        }
     }
 
     const handleSectionClick = (sectionId: string | undefined) => {
@@ -82,13 +90,15 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
     };
 
     const handleCreateNew = async () => {
-        props.createChapter();
+        if ( props.createChapter ) {
+            props.createChapter();
+        }
     }
 
 
     return (
         <ChapterSelectorContainer>
-            <h2 style={{textAlign: 'center'}}>{props.activeProject?.title}</h2>
+            {props.activeProject && <h2 style={{textAlign: 'center'}}>{props.activeProject?.title}</h2>}
 
             {/* Chapter list that opens relative to the button */}
             <ChaptersContainer>
@@ -121,7 +131,7 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
                                                 {section.text}
                                             </SectionText>
                                     
-                                            <ThumbnailImage src={section.image} alt={`Section ${section.order}`} />
+                                            {section.imageLocal && <ThumbnailImage src={section.imageLocal} alt={`Section ${section.order}`} />}
 
                                             {section.replies && (
                                                 <RepliesButton edge="end">
@@ -194,11 +204,13 @@ const RepliesButton = styled(IconButton)`
 `;
 
 const ActionButton = styled(Button)<{$delete?:boolean}>`
-  background-color: ${props => props.$delete ? 'red' : '#17a2b8'};
-  color: white;
+  background-color: ${props => props.$delete ? 'red' : 'lightgreen'};
+  color: ${props => props.$delete ? 'white' : 'purple'};
+  border: 1px solid purple;
 
   &:hover {
-    background-color: ${props => props.$delete ? 'purple' : '#138496'};
+    background-color: purple;
+    color: white;
   }
 `;
 
@@ -207,9 +219,11 @@ const StyledListItem = styled(ListItem) <{ $isSelectable: boolean, $chapter?: bo
         background-color: ${props => props.$isSelectable ? (props.$chapter ? 'coral' : 'green') : (props.$chapter && 'lightgrey')};
         color: ${props => props.$isSelectable && 'white'};
     }
-    border-radius: 8px;
+    border-radius: ${props => props.$chapter ? '8px' : '0'};
     border: 2px solid black;
     cursor: ${props => props.$isSelectable && 'pointer'};
     padding-left: 12px;
     min-height: 60px;
+    width: ${props => props.$chapter ? '100%' : '90%'};
+    margin: 0 auto;
 `;

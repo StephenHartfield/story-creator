@@ -66,7 +66,6 @@ const ProjectOverview: React.FC<POProps> = ({project, selectProject, activeProje
 
 export default ProjectOverview;
 
-// Styled components
 const OverviewWrapper = styled.div <{$active:boolean}>`
   display: flex;
   width: 100%;

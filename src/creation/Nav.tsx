@@ -8,6 +8,9 @@ import Auth from './routes/Auth';
 import Projects, { Project, ProjectSlim } from './routes/Projects';
 import SingleChapter from './routes/SingleChapter';
 import SingleScreen from './routes/SingleScreen';
+import CurrencyManager from './routes/CurrencyManager';
+import TestScreen from './routes/TestSingleScreen';
+import Settings from './routes/Settings';
 
 interface NavProps {
   user: any;
@@ -56,9 +59,9 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
           <NavButton onClick={toggleAddOns}>AddOns {isAddOnsOpen ? <ExpandLess /> : <ExpandMore />}</NavButton>
           {isAddOnsOpen && (
             <Dropdown $addons>
-              <DropdownItem href="#">Currencies</DropdownItem>
-              <DropdownItem href="#">Items</DropdownItem>
-              <DropdownItem href="#">Enemies</DropdownItem>
+              <DropdownItem $gold onClick={() => setIsAddOnsOpen(false)} to="/currency">Currencies</DropdownItem>
+              <DropdownItem to="/">Items</DropdownItem>
+              <DropdownItem to="/">Enemies</DropdownItem>
             </Dropdown>
           )}
 
@@ -76,17 +79,11 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
               <Route path="/chapters" element={<Chapters userId={user?.uid} activeProject={activeProject} />} />
               <Route path='/chapters/:chapterId' element={<SingleChapter activeProject={activeProject} />} />
               <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen activeProject={activeProject} />} />
+              <Route path='/testing/:screenId' element={<TestScreen />} />
+              <Route path="/currency" element={<CurrencyManager activeProject={activeProject} />} />
+              <Route path="/settings/screens/:screenId" element={<Settings activeProject={activeProject} />} />
+              <Route path="/settings/chapters/:chapterId" element={<Settings activeProject={activeProject} />} />
               <Route path="/login" element={<Auth />} />
-              {/* <Route path="/pages" element={<Pages />} />
-                        <Route path="/replies" element={<Replies />} />
-                        <Route path="/transitions" element={<Transitions />} />
-                        <Route path="/loops" element={<Loops />} />
-                        <Route path="/assets/images" element={<Images />} />
-                        <Route path="/assets/sounds" element={<Sounds />} />
-                        <Route path="/addons/currencies" element={<Currencies />} />
-                        <Route path="/addons/items" element={<Items />} />
-                        <Route path="/addons/enemies" element={<Enemies />} />
-                        <Route path="/settings" element={<Settings />} /> */}
             </Routes>
           </Base>
         </Content>
@@ -223,17 +220,18 @@ const Dropdown = styled.div <{ $addons?: boolean }>`
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 `;
 
-const DropdownItem = styled.a`
+const DropdownItem = styled(Link)<{$gold?:boolean}>`
   padding: 10px;
-  color: white;
+  color: ${props => props.$gold ? 'purple' : 'white'};
   text-decoration: none;
   font-size: 14px;
   border-radius: 5px;
   cursor: pointer;
+  background-color: ${props => props.$gold ? '#FFD700' : 'transparent'};
 
   &:hover {
-    background-color: lightgreen;
-    color: black
+    background-color: ${props => props.$gold ? 'purple' : 'lightgreen'};
+    color: ${props => props.$gold ? '#FFD700' : 'black'};
   }
 `;
 

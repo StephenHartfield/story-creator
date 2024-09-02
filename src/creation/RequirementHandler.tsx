@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { Button, Typography } from '@mui/material';
-import { Requirement } from './replies/RepliesCreator';
+import { Option, Requirement } from './replies/RepliesCreator';
+import Select from "react-dropdown-select";
 
 interface RequirementProps {
+    currencies: Option[];
     addRequirement: (req: Requirement) => void;
 }
 
@@ -12,7 +14,7 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
     const [requirementType, setRequirementType] = useState<'currency' | 'item'>();
     const [value, setValue] = useState<number | boolean>();
     const [proceeded, setProceeded] = useState<boolean>();
-    const [keyWord, setKeyWord] = useState<string>();
+    const [keyWord, setKeyWord] = useState<{}[]>([]);
     const [greaterThan, setGreaterThan] = useState<boolean>();
     const [toFinal, setToFinal] = useState<boolean>();
 
@@ -42,12 +44,12 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         setToFinal(true);
     }
 
-    const handleKeyWord = (kw: string) => {
-        setKeyWord(kw);
+    const handleKeyWord = (opt: {}[]) => {
+        setKeyWord(opt as {}[]);
     }
 
     const complete = () => {
-        const completed: any = { addedAs: addonSelector, type: requirementType, value, keyWord };
+        const completed: any = { addedAs: addonSelector, type: requirementType, value, keyWord: (keyWord[0] as Option) };
         if (greaterThan !== undefined) {
             completed['greaterThan'] = greaterThan; 
         }
@@ -55,7 +57,7 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         setAddonSelector(undefined);
         setRequirementType(undefined);
         setValue(undefined);
-        setKeyWord(undefined);
+        setKeyWord([]);
         setProceeded(undefined);
         setToFinal(undefined);
         setGreaterThan(undefined);
@@ -110,10 +112,10 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
     if (addonSelector && requirementType && !proceeded && !toFinal) {
         return (
             <ButtonsWrapper>
-                <InstructionText>Choose {requirementType} {addonSelector}</InstructionText>
+                <InstructionText>Choose How much to gain or lose</InstructionText>
                 {requirementType === 'currency' && (
                     <>
-                        <CurrencyInput type="text" pattern="[0-9]*" onChange={(e) => handleCurrency(e.target.value)} />
+                        <CurrencyInput type="number" pattern="[0-9]*" onChange={(e) => handleCurrency(e.target.value)} />
                         {value && <StyledButton variant="outlined" onClick={proceed}>
                             ENTER
                         </StyledButton>}
@@ -159,7 +161,8 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         return (
             <ButtonsWrapper>
                 <InstructionText>Enter Keyword for {requirementType} to check</InstructionText>
-                <CurrencyInput type="text" placeholder='' onChange={(e) => handleKeyWord(e.target.value)} />
+                <Select options={props.currencies} values={keyWord} onChange={(values: {}[]) => handleKeyWord(values)} />
+                {/* <CurrencyInput type="text" placeholder='' onChange={(e) => handleKeyWord(e.target.value)} /> */}
                 <StyledButton variant="outlined" onClick={complete}>
                     COMPLETE
                 </StyledButton>
@@ -204,7 +207,7 @@ const CurrencyInput = styled.input`
   padding: 8px;
   border: 2px solid #0073e6;
   border-radius: 4px;
-  width: 100%;
+  width: 50%;
   margin-top: 8px;
   background-color: #e6f7ff;
   color: #003366;

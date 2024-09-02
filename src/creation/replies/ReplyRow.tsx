@@ -1,16 +1,41 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, TextField, Grid, Box, Typography } from "@mui/material";
 import RequirementHandler from '../RequirementHandler';
-import { Reply, Requirement } from "./RepliesCreator";
+import { Option, Reply, Requirement } from "./RepliesCreator";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { Screen, screenDBKey } from "../routes/SingleChapter";
 
 interface ReplyRowProps {
   index: number;
   reply: Reply;
+  currencies: Option[];
   toggleChapterSelector: () => void;
   updateReply: (rep: Reply) => void;
 }
 
 const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
+  const [linkedScreen, setLinkedScreen] = useState<Screen>();
+
+  useEffect(() => {
+    if (props.reply.linkToSectionId) {
+      getSectionLinkedTo(props.reply.linkToSectionId)
+    }
+  }, [props.reply.linkToSectionId]);
+
+  const getSectionLinkedTo = async(screenId: string) => {
+    try {
+      const screenRef = doc(db, screenDBKey, screenId);
+      const screenSnap = await getDoc(screenRef);
+  
+      if (screenSnap.exists()) {
+          const screenData = { id: screenSnap.id, ...screenSnap.data() } as Screen;
+          setLinkedScreen(screenData);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   const handleTextChange = (text: string) => {
     const replyCopy = { ...props.reply };
@@ -33,10 +58,12 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
       sx={{
         p: 3,
         mb: 3,
-        minWidth: '500px',
+        width: '650px',
+        maxWidth: '650px',
         border: "2px solid #0066cc",
         borderRadius: "12px",
-        backgroundColor: "#e6f7ff", // light blue background
+        backgroundColor: "#e6f7ff",
+        margin: '20px auto'
       }}
     >
       <Grid container spacing={3} alignItems="center">
@@ -68,7 +95,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
           />
         </Grid>
 
-        <Grid item xs={12} sm={4} container justifyContent="flex-start" alignItems="center">
+        <Grid item xs={12} sm={12} container justifyContent="flex-start" alignItems="center">
           {/* Links To button */}
           <Button
             variant="contained"
@@ -85,14 +112,14 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
           </Button>
           {props.reply.linkToSectionId && (
             <Typography variant="body2" sx={{ ml: 2, color: "#004080" }}>
-              {props.reply.linkToSectionId}
+              {linkedScreen?.text}
             </Typography>
           )}
         </Grid>
       </Grid>
 
       <Box mt={3}>
-        <RequirementHandler addRequirement={updateRequirement} />
+        <RequirementHandler currencies={props.currencies} addRequirement={updateRequirement} />
       </Box>
 
       <Box mt={3}>
@@ -101,7 +128,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Requirements:</Typography>
             {props.reply.requirements.map((req, index) => (
               <Typography key={`requirement${index}`} variant="body2" sx={{ color: "#333" }}>
-                Required to have {req.type === 'item' ? (req.value ? 'in your possession' : 'not in your possession') : (typeof req.greaterThan !== 'undefined' && req.greaterThan ? 'greater than ' + req.value : 'less than ' + req.value)} {req.keyWord}
+                Required to have {req.type === 'item' ? (req.value ? 'in your possession' : 'not in your possession') : (typeof req.greaterThan !== 'undefined' && req.greaterThan ? 'greater than ' + req.value : 'less than ' + req.value)} {req.keyWord.label}
               </Typography>
             ))}
           </Box>
@@ -112,7 +139,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Effects:</Typography>
             {props.reply.effects.map((ef, index) => (
               <Typography key={`effect${index}`} variant="body2" sx={{ color: "#333" }}>
-                Causes user to {ef.value && typeof ef.value === 'number' ? (ef.value > 0 ? 'Gain' : 'Lose') : (ef.value ? 'Gain' : 'Lose')} {ef.type === 'currency' && ef.value} {ef.keyWord}
+                Causes user to {ef.value && typeof ef.value === 'number' ? (ef.value > 0 ? 'Gain' : 'Lose') : (ef.value ? 'Gain' : 'Lose')} {ef.type === 'currency' && ef.value} {ef.keyWord.label}
               </Typography>
             ))}
           </Box>

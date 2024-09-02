@@ -114,10 +114,11 @@ const SingleChapter: React.FC<SingleScreenProps> = ({ activeProject }) => {
     return (
         <>
             <StyledLink to={`/chapters/${chapterId}`}>Back to List</StyledLink>
-            {screen && <RepliesCreator
+            {activeProject && screen && <RepliesCreator
                 addReply={addReply}
                 removeReply={(id: string) => removeReply(id)}
                 setReplies={setReplies}
+                activeProjectId={activeProject.id}
                 submit={(repls: Reply[], scrn: Screen) => submitData(repls, scrn)}
                 screen={screen}
                 replies={replies} />}

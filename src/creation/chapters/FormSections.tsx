@@ -2,20 +2,27 @@ import React, { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Screen } from '../routes/SingleChapter';
+import { Screen, screenDBKey } from '../routes/SingleChapter';
 import { Chapter } from '../routes/Chapters';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ProjectSlim } from '../routes/Projects';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
 
 interface FSProps {
   chapter: Chapter;
   screens: Screen[];
   submit: (screens: Screen[], chapter: Chapter) => void;
+  activeProject: ProjectSlim;
+  addImageFile: (file: File) => void;
   addScreen: () => {};
   removeScreen: (id: string) => {};
 }
 
-const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, removeScreen }) => {
+const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProject, addImageFile, addScreen, removeScreen }) => {
   const [title, setTitle] = useState<string>('');
+  const [chImage, setChImage] = useState<string>('');
+  const [chImageLocal, setChImageLocal] = useState<string>('');
   const [sections, setSections] = useState<Screen[]>([]);
   const navigate = useNavigate();
 
@@ -23,7 +30,10 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, 
     if (chapter && !title) {
       setTitle(chapter.title);
     }
-    if ( screens.length ) {
+    if (chapter.imageLocal && !chImageLocal) {
+      setChImageLocal(chapter.imageLocal);
+    }
+    if (screens.length) {
       setSections(screens);
     }
   }, [chapter, screens]);
@@ -40,22 +50,39 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, 
 
   const handleImageUpload = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
+      addImageFile(event.target.files[0]);
+      const imageUrl = URL.createObjectURL(event.target.files[0]);
+      if (index === 999) {
+        setChImage(`${activeProject.id}/${event.target.files[0].name}`);
+        setChImageLocal(imageUrl);
+        return;
+      }
       const newSections = [...sections];
-      const imageUrls = Array.from(event.target.files).map(file => URL.createObjectURL(file));
-      newSections[index].image = imageUrls[0];
+      newSections[index].imageLocal = imageUrl;
+      newSections[index].image = `${activeProject.id}/${event.target.files[0].name}`;
       setSections(newSections);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const ch = {...chapter, title: title};
+    const ch = { ...chapter, title: title, image: chImage };
     submit(sections, ch);
   };
 
   const addReplies = (id: string) => {
     navigate(`screens/${id}`);
   };
+
+  const onDeleteImage = async(index: number) => {
+    const copySections = [...sections];
+    const copySingle = copySections[index];
+    copySingle.imageLocal = '';
+    copySingle.image = '';
+    await updateDoc(doc(db, screenDBKey, copySingle.id), {...copySingle});
+    copySections[index] = copySingle;
+    setSections(copySections);
+  }
 
   return (
     <FormContainer onSubmit={handleSubmit}>
@@ -67,11 +94,29 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, 
           value={title}
           onChange={handleTitleChange}
         />
+        <ActionButtons>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(999, e)}
+            style={{ display: 'none' }}
+            id="upload-chapter"
+          />
+          <ActionButton as="label" htmlFor={'upload-chapter'}>
+            Default Chapter Image
+          </ActionButton>
+          <ActionButton as="label">
+            Default Sound
+          </ActionButton>
+          {chImageLocal && <img src={chImageLocal} style={{ width: '40px' }} />}
+        </ActionButtons>
+        <Link to={`/settings/chapters/${chapter.id}`}>Settings</Link>
       </FormGroup>
 
       <SectionsContainer>
         {sections.map((section, index) => (
           <SectionGroup key={index}>
+            <h2>Screen {index + 1}</h2>
             <TextArea
               value={section.text}
               onChange={(e) => handleSectionChange(index, e.target.value)}
@@ -81,7 +126,6 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, 
             <ActionButtons>
               <input
                 type="file"
-                multiple
                 accept="image/*"
                 onChange={(e) => handleImageUpload(index, e)}
                 style={{ display: 'none' }}
@@ -92,12 +136,21 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, addScreen, 
               </ActionButton>
               <ActionButton type="button">Add Sound</ActionButton>
               <ActionButton onClick={() => addReplies(section.id)}>Add Replies</ActionButton>
+              <Link to={`/testing/${section.id}`}>Test</Link>
+              <Link to={`/settings/screens/${section.id}`}>Settings</Link>
               <RemoveButton type="button" onClick={() => removeScreen(section.id)}>
                 <DeleteIcon />
               </RemoveButton>
             </ActionButtons>
             <ImageList>
-              <ImageThumbnail src={section.image} alt={`Section ${index + 1} Image`} />
+              {section.imageLocal && (
+                <ImageContainer>
+                  <StyledImg src={section.imageLocal} alt={`Section ${index + 1} Image`} />
+                  <DeleteButton onClick={() => onDeleteImage(index)}>
+                    <DeleteIcon />
+                  </DeleteButton>
+                </ImageContainer>
+              )}
             </ImageList>
           </SectionGroup>
         ))}
@@ -115,7 +168,7 @@ export default FormSections;
 
 const FormContainer = styled.form`
   max-width: 800px;
-  width: 50%;
+  width: 700px;
   margin: 0 auto;
   padding: 20px;
   background-color: #f9f9f9;
@@ -143,11 +196,14 @@ const Input = styled.input`
 
 const SectionsContainer = styled.div`
   margin-bottom: 20px;
+  width: 700px;
 `;
 
 const SectionGroup = styled.div`
   background-color: #e6e6e6;
-  padding: 15px;
+  width: 650px;
+  max-width: 650px;
+  padding: 15px 15px 30px;
   margin-bottom: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -167,7 +223,7 @@ const TextArea = styled.textarea`
 
 const ActionButtons = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
 `;
 
@@ -227,10 +283,38 @@ const ImageList = styled.div`
   margin-top: 10px;
 `;
 
-const ImageThumbnail = styled.img`
-  width: 100px;
-  height: 100px;
+const ImageContainer = styled.div`
+  position: relative;
+  display: inline-block;
+  width: 150px;
+  height: 150px;
+
+  &:hover button {
+    display: block;
+  }
+`;
+
+const StyledImg = styled.img`
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+  border-radius: 8px;
+`;
+
+const DeleteButton = styled.button`
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(255, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+
+  &:hover {
+    background-color: rgba(255, 0, 0, 1);
+  }
 `;
