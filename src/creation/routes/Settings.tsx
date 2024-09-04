@@ -28,10 +28,10 @@ interface SettingProps {
 }
 
 const Settings: React.FC<SettingProps> = ({activeProject}) => {
-    const [timeForRepliesToDisplay, setTimeForRepliesToDisplay] = useState<number>(5000);
-    const [autoAdvances, setAutoAdvances] = useState<boolean>(false);
-    const [timeToAnswer, setTimeToAnswer] = useState<number>(10000);
-    const [defaultBackground, setDefaultBackground] = useState<string>('');
+    const [timeForRepliesToDisplay, setTimeForRepliesToDisplay] = useState<number>();
+    const [autoAdvances, setAutoAdvances] = useState<boolean>();
+    const [timeToAnswer, setTimeToAnswer] = useState<number>();
+    const [defaultBackground, setDefaultBackground] = useState<string>();
     const [currencyOpts, setCurrencyOpts] = useState<Option[]>([]);
     const [showCurrencies, setShowCurrencies] = useState<string[]>([]);
     const [currenciesSelected, setCurrenciesSelected] = useState<any[]>([]);
@@ -46,7 +46,6 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
         if (activeProject) {
             if (screenId) {
                 fetchSettings(screenId);
-                fetchScreenData(screenId);
             }
             if (chapterId) {
                 fetchSettings(chapterId);
@@ -60,25 +59,67 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
             const q = query(collection(db, settingsDBKey), where(screenId ? 'screenId' : 'chapterId', "==", id));
             const settingSnap = await getDocs(q);
 
+            const q2 = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
+            const querySnapshot = await getDocs(q2);
+            const currencyList = querySnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as Currency[];
+            const mappedList = currencyList.map(c => ({ value: c.keyWord, label: c.displayName }));
+            setCurrencyOpts(mappedList);
             if (settingSnap.docs[0]) {
                 const se = { ...settingSnap.docs[0].data(), id: settingSnap.docs[0].id } as Setting;
                 setTimeForRepliesToDisplay(se.timeForRepliesToDisplay);
                 setAutoAdvances(se.autoAdvances);
                 setTimeToAnswer(se.timeToAnswer);
                 setDefaultBackground(se.defaultBackground);
-                setShowCurrencies(se.showCurrencies);
+                if(se.showCurrencies) {
+                    setShowCurrencies(se.showCurrencies);
+                }
                 setSettingId(se.id);
 
-                const q = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
-                const querySnapshot = await getDocs(q);
-                const currencyList = querySnapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as Currency[];
-                const mappedList = currencyList.map(c => ({ value: c.keyWord, label: c.displayName }));
-                setCurrencyOpts(mappedList);
                 if (se.showCurrencies && se.showCurrencies.length) {
                     setCurrenciesSelected(mappedList.filter(c => se.showCurrencies?.includes(c.value)));
+                }
+                fetchScreenData(id, mappedList, se);
+            } else {
+                fetchScreenData(id, mappedList);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    const fetchScreenData = async(id: string, mappedList: {value: string, label: string}[], currSettings?: Setting) => {
+        try {
+            const screenRef = doc(db, screenDBKey, id);
+            const screenSnap = await getDoc(screenRef);
+
+            if (screenSnap.exists()) {
+                const screenData = { id: screenSnap.id, ...screenSnap.data() } as Screen;
+                setScreen(screenData);
+
+                //find chapter defaults to inherit if not already filled
+                const q = query(collection(db, settingsDBKey), where('chapterId', "==", screenData.chapterId));
+                const settingChSnap = await getDocs(q);
+                if (settingChSnap.docs[0]) {
+                    const se = { ...settingChSnap.docs[0].data(), id: settingChSnap.docs[0].id } as Setting;
+                    if(typeof timeForRepliesToDisplay === 'undefined' && typeof se.timeForRepliesToDisplay !== 'undefined') {
+                        setTimeForRepliesToDisplay(se.timeForRepliesToDisplay);
+                    }
+                    if(typeof currSettings?.autoAdvances === 'undefined' && typeof se.autoAdvances !== 'undefined') {
+                        setAutoAdvances(se.autoAdvances);
+                    }
+                    if(typeof currSettings?.timeToAnswer === 'undefined' && typeof se.timeToAnswer !== 'undefined') {
+                        setTimeToAnswer(se.timeToAnswer);
+                    }
+                    if(typeof currSettings?.defaultBackground === 'undefined' && typeof se.defaultBackground !== 'undefined') {
+                        setDefaultBackground(se.defaultBackground);
+                    }
+                    if(typeof currSettings?.showCurrencies === 'undefined' || currSettings.showCurrencies.length===0 && typeof se.showCurrencies !== 'undefined' && se.showCurrencies.length) {
+                        setShowCurrencies(se.showCurrencies || []);
+                        setCurrenciesSelected(mappedList.filter(c => se.showCurrencies?.includes(c.value)));
+                    }
                 }
             }
         } catch (e) {
@@ -86,19 +127,6 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
         }
     }
 
-    const fetchScreenData = async (id: string) => {
-        try {
-            const screenRef = doc(db, screenDBKey, id);
-            const screenSnap = await getDoc(screenRef);
-
-            if (screenSnap.exists()) {
-                const screenData = { id: screenSnap.id, ...screenSnap.data() };
-                setScreen(screenData as Screen);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }
     const fetchChapterData = async (id: string) => {
         try {
             const chapterRef = doc(db, chapterDBKey, id);
@@ -130,7 +158,6 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
             } else {
                 await addDoc(collection(db, settingsDBKey), settingsData);
             }
-            console.log('Submitted Settings:', settingsData);
             const chi = chapterId ? chapterId : screen?.chapterId;
             navigate(`/chapters/${chi}`);
         } catch (e) {

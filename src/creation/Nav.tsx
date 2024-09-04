@@ -41,7 +41,6 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
           </LogoWrapper>
           <SidebarButton to="/projects">Projects</SidebarButton>
           <SidebarButton to="/chapters">Chapters</SidebarButton>
-          <SidebarButton to="/replies">Replies</SidebarButton>
           <SidebarButton to="/transitions">Transitions</SidebarButton>
           <SidebarButton to="/loops">Loops</SidebarButton>
         </LeftSidebar>
@@ -70,7 +69,7 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
           <LoginButton to="/login">{user && user.email ? 'LOG OUT' : 'LOG IN'}</LoginButton>
         </TopNav>
 
-        <Breadcrumbs />
+        {/* <Breadcrumbs /> */}
 
         <Content>
           <Base>
@@ -79,7 +78,7 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
               <Route path="/chapters" element={<Chapters userId={user?.uid} activeProject={activeProject} />} />
               <Route path='/chapters/:chapterId' element={<SingleChapter activeProject={activeProject} />} />
               <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen activeProject={activeProject} />} />
-              <Route path='/testing/:screenId' element={<TestScreen />} />
+              <Route path='/testing/:screenId' element={<TestScreen activeProject={activeProject} />} />
               <Route path="/currency" element={<CurrencyManager activeProject={activeProject} />} />
               <Route path="/settings/screens/:screenId" element={<Settings activeProject={activeProject} />} />
               <Route path="/settings/chapters/:chapterId" element={<Settings activeProject={activeProject} />} />

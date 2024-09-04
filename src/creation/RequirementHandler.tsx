@@ -14,7 +14,8 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
     const [requirementType, setRequirementType] = useState<'currency' | 'item'>();
     const [value, setValue] = useState<number | boolean>();
     const [proceeded, setProceeded] = useState<boolean>();
-    const [keyWord, setKeyWord] = useState<{}[]>([]);
+    const [keyWord, setKeyWord] = useState<any[]>([]);
+    const [keyWordToSave, setKeyWordToSave] = useState<string>();
     const [greaterThan, setGreaterThan] = useState<boolean>();
     const [toFinal, setToFinal] = useState<boolean>();
 
@@ -44,12 +45,13 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         setToFinal(true);
     }
 
-    const handleKeyWord = (opt: {}[]) => {
-        setKeyWord(opt as {}[]);
+    const handleKeyWord = (opt: any[]) => {
+        setKeyWord(opt as any[]);
+        setKeyWordToSave(opt[0].value);
     }
 
     const complete = () => {
-        const completed: any = { addedAs: addonSelector, type: requirementType, value, keyWord: (keyWord[0] as Option) };
+        const completed: any = { addedAs: addonSelector, type: requirementType, value, keyWord: keyWordToSave };
         if (greaterThan !== undefined) {
             completed['greaterThan'] = greaterThan; 
         }
@@ -58,6 +60,7 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         setRequirementType(undefined);
         setValue(undefined);
         setKeyWord([]);
+        setKeyWordToSave(undefined);
         setProceeded(undefined);
         setToFinal(undefined);
         setGreaterThan(undefined);
@@ -161,7 +164,7 @@ const RequirementHandler: React.FC<RequirementProps> = (props: RequirementProps)
         return (
             <ButtonsWrapper>
                 <InstructionText>Enter Keyword for {requirementType} to check</InstructionText>
-                <Select options={props.currencies} values={keyWord} onChange={(values: {}[]) => handleKeyWord(values)} />
+                <Select options={props.currencies} values={keyWord} onChange={(values: any[]) => handleKeyWord(values)} />
                 {/* <CurrencyInput type="text" placeholder='' onChange={(e) => handleKeyWord(e.target.value)} /> */}
                 <StyledButton variant="outlined" onClick={complete}>
                     COMPLETE

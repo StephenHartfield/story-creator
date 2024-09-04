@@ -27,7 +27,7 @@ export interface Requirement {
     addedAs: 'requirement' | 'effect' | undefined;
     type: 'currency' | 'item' | undefined;
     value: number | boolean | undefined;
-    keyWord: Option;
+    keyWord: string;
     greaterThan?: boolean;
 }
 

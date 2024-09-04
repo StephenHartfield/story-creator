@@ -10,14 +10,28 @@ import { TypeAnimation } from 'react-type-animation';
 import { getDownloadURL, ref } from 'firebase/storage';
 import Loading from '../../Loading';
 import { Setting, settingsDBKey } from './Settings';
+import { Currency, currencyDBKey } from './CurrencyManager';
+import { ProjectSlim } from './Projects';
+import { Button } from '@mui/material';
 
-const TestScreen: React.FC = () => {
+export interface UserCurrency {
+    currency: Currency;
+    userValue: number;
+}
+
+interface TestProps {
+    activeProject: ProjectSlim | undefined;
+}
+
+const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     const { screenId } = useParams<{ screenId: string }>();
     const [screen, setScreen] = useState<Screen | null>(null);
     const [replies, setReplies] = useState<Reply[] | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [defaultBg, setDefaultBg] = useState<string>();
     const [settings, setSettings] = useState<Setting>();
+    const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
+    const [readyToTest, setReadyToTest] = useState<boolean>(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -28,7 +42,7 @@ const TestScreen: React.FC = () => {
                 const screenDoc = await getDoc(screenRef);
                 if (screenDoc.exists()) {
                     let sc: any = {};
-                    const setts = await fetchSettings({...screenDoc.data(), id: screenDoc.id} as Screen);
+                    const setts = await fetchSettings({ ...screenDoc.data(), id: screenDoc.id } as Screen);
                     if (screenDoc.data().image) {
                         const fileRef = ref(storage, screenDoc.data().image);
                         const url = await getDownloadURL(fileRef);
@@ -49,6 +63,8 @@ const TestScreen: React.FC = () => {
                     if (repliesList.length) {
                         const sorted = repliesList.sort((a, b) => a.order - b.order);
                         setReplies(sorted);
+                    } else {
+                        setReplies([]);
                     }
                     setIsLoading(false);
                 } else {
@@ -57,11 +73,52 @@ const TestScreen: React.FC = () => {
                 }
             }
         };
-
+        if(activeProject && !readyToTest) {
+            initializeTest();
+        }
         fetchScreen();
-    }, [screenId]);
+    }, [screenId, activeProject]);
 
-    const fetchSettings = async(scrn: Screen): Promise<Setting | null> => {
+    useEffect(() => {
+        if(replies && replies.length && userCurrencies.length) {
+            //hide if requirement not met
+            const indexesToRemove: number[] = [];
+            replies.forEach((r, i) => {
+                if(r.requirements.length) {
+                    r.requirements.forEach(req => {
+                        if(req.type==='currency') {
+                            const currencyToCheck = userCurrencies.find(uc => uc.currency.keyWord===req.keyWord);
+                            if(currencyToCheck) {
+                                if (req.greaterThan && currencyToCheck.userValue <= (req.value as number)) {
+                                    indexesToRemove.push(i);
+                                } else if(!req.greaterThan && currencyToCheck.userValue >= (req.value as number)) {
+                                    indexesToRemove.push(i);
+                                }
+                            } else {
+                                indexesToRemove.push(i);
+                            }
+                        }
+                    })
+                }
+            })
+            const repCopy = [...replies];
+            const replyFiltered = repCopy.filter((_, idx) => !indexesToRemove.includes(idx));
+            setReplies(replyFiltered);
+        }
+    }, [userCurrencies, isLoading]);
+
+    const initializeTest = async () => {
+        const q = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
+        const querySnapshot = await getDocs(q);
+        const currencyList = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        })) as Currency[];
+        const userCurrencies = currencyList.map(curr => ({ currency: curr, userValue: curr.startingValue || 0 }));
+        setUserCurrencies(userCurrencies);
+    }
+
+    const fetchSettings = async (scrn: Screen): Promise<Setting | null> => {
         try {
             const q = query(collection(db, settingsDBKey), where('screenId', "==", scrn.id));
             const settingSnap = await getDocs(q);
@@ -86,30 +143,99 @@ const TestScreen: React.FC = () => {
     }
 
     const handleReplyClick = (reply: Reply) => {
-        console.log( reply );
+        if ( reply.effects.length > 0) {
+            const userCurrenciesCopy = [...userCurrencies];
+            reply.effects.forEach(e => {
+                if(e.type==='currency') {
+                    let matchedI = 0;
+                    const currencyToChange = userCurrenciesCopy.find((uc, idx) => {
+                        if (uc.currency.keyWord===e.keyWord) {
+                            matchedI = idx;
+                            return uc;
+                        }
+                    })
+                    if (currencyToChange) {
+                        currencyToChange.userValue += e.value as number;
+                        userCurrenciesCopy[matchedI] = currencyToChange;
+                        setUserCurrencies(userCurrenciesCopy);
+                    }
+                }
+            })
+        }
         navigate(`/testing/${reply.linkToSectionId}`);
     }
 
-    return (
-        <>
-            <Loading isLoading={isLoading} />
-            {screen && <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
-                <ScreenContent>
-                    <TypeAnimation key={screen.text} cursor={false} sequence={[screen.text]} style={{ width: '300px', background: 'transparent' }} wrapper='div' speed={50} />
-                    <ReplySection>
-                        {replies && replies.map((reply, index) => (
-                            <ReplyButton onClick={() => handleReplyClick(reply)} key={index}>{reply.text}</ReplyButton>
-                        ))}
-                    </ReplySection>
-                </ScreenContent>
-            </ScreenContainer>}
-        </>
-    );
+    const handleUserCurrency = (key: string, val: any) => {
+        if (val==='' || (!isNaN(val) && !isNaN(parseFloat(val)))) {
+            const userCopy = [...userCurrencies];
+            let matchedi = 0;
+            const match = userCopy.find((uc, idx) => {
+                if (uc.currency.keyWord === key) {
+                    matchedi = idx;
+                    return uc;
+                }
+            });
+            if (match) {
+                match.userValue = parseInt(val);
+                userCopy[matchedi] = match;
+            }
+            setUserCurrencies(userCopy);
+        } else {
+            console.error('not a number!');
+        }
+    }
+
+    const startTest = () => {
+        // userCurrencies.forEach(c => {
+        //     localStorage.setItem(`user-currency-${activeProject?.id}-${c.currency.keyWord}`, c.userValue.toString());
+        // })
+        setReadyToTest(true);
+    }
+
+
+    if (!readyToTest) {
+        return (
+            <FormContainer>
+                <FormTitle>User Starts With</FormTitle>
+                {userCurrencies.map((curr, index) => (
+                    <CurrencyRow key={'curr' + index}>
+                        <CurrencyLabel>{curr.currency.displayName}</CurrencyLabel>
+                        <CurrencyInput
+                            type="number"
+                            value={curr.userValue}
+                            onChange={(e) => handleUserCurrency(curr.currency.keyWord, e.target.value)}
+                        />
+                    </CurrencyRow>
+                ))}
+                <SubmitButton onClick={startTest}>Start Test</SubmitButton>
+            </FormContainer>
+        )
+    } else {
+        return (
+            <>
+                <Loading isLoading={isLoading} />
+                {userCurrencies.map(c => (
+                    <div key={c.currency.keyWord}>
+                        {settings?.showCurrencies?.includes(c.currency.keyWord) && <p>{c.currency.displayName}: {c.userValue}</p>}
+                    </div>
+                ))}
+                {screen && <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
+                    <ScreenContent>
+                        <TypeAnimation key={screen.text} cursor={false} sequence={[screen.text]} style={{ width: '300px', background: 'transparent' }} wrapper='div' speed={50} />
+                        <ReplySection>
+                            {replies && replies.map((reply, index) => (
+                                <ReplyButton onClick={() => handleReplyClick(reply)} key={index}>{reply.text}</ReplyButton>
+                            ))}
+                        </ReplySection>
+                    </ScreenContent>
+                </ScreenContainer>}
+            </>
+        );
+    }
 };
 
 export default TestScreen;
 
-// Styled Components
 const ScreenContainer = styled.div<{ background: string | undefined, bgColor: string | undefined }>`
   display: flex;
   justify-content: center;
@@ -132,15 +258,62 @@ const ScreenContent = styled.div`
   padding: 20px;
 `;
 
-const TextSection = styled.div`
-  flex: 1;
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
+const FormContainer = styled.div`
+  max-width: 400px;
+  width: 100%;
+  margin: 50px auto;
+  padding: 30px;
+  background-color: #f4f4f4;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   text-align: center;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const FormTitle = styled.h2`
+  color: #ff6f61; /* Coral color */
+  margin-bottom: 20px;
+  font-size: 24px;
+`;
+
+const CurrencyRow = styled.div`
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  gap: 20px;
+`;
+
+const CurrencyLabel = styled.span`
+  font-size: 16px;
+  color: #6a1b9a; /* Purple color */
+  flex: 1;
+`;
+
+const CurrencyInput = styled.input`
+  width: 100px;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  flex: 1;
+  background-color: #e0f7e4; /* Light green background */
+`;
+
+const SubmitButton = styled.button`
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #ff6f61; /* Coral color */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #e65100; /* Darker coral on hover */
+  }
 `;
 
 const ReplySection = styled.div`

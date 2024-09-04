@@ -146,7 +146,7 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
                     ))}
                 </List> : <SectionText>No Chapters to Display</SectionText>}
             </ChaptersContainer>
-            <AddButton style={{marginTop: '20px'}} onClick={handleCreateNew} variant="outlined">New Chapter</AddButton>
+            {!props.isSelectingSection && <AddButton style={{marginTop: '20px'}} onClick={handleCreateNew} variant="outlined">New Chapter</AddButton>}
         </ChapterSelectorContainer>
     );
 };
