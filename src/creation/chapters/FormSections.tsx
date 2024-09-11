@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { ReactHTMLElement, useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Screen, screenDBKey } from '../routes/SingleChapter';
-import { Chapter } from '../routes/Chapters';
 import { Link, useNavigate } from 'react-router-dom';
-import { ProjectSlim } from '../routes/Projects';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
+import { Chapter } from '../stores/ChapterStore';
+import { ProjectSlim } from '../stores/ProjectStore';
+import useScreenStore, { Screen, screenDBKey } from '../stores/ScreenStore';
+import ScreenTextEditor from '../screens/ScreenTextEditor';
 
 interface FSProps {
   chapter: Chapter;
@@ -16,7 +17,7 @@ interface FSProps {
   activeProject: ProjectSlim;
   addImageFile: (file: File) => void;
   addScreen: () => {};
-  removeScreen: (id: string) => {};
+  removeScreen: (id: string) => void;
 }
 
 const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProject, addImageFile, addScreen, removeScreen }) => {
@@ -24,7 +25,9 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
   const [chImage, setChImage] = useState<string>('');
   const [chImageLocal, setChImageLocal] = useState<string>('');
   const [sections, setSections] = useState<Screen[]>([]);
+  const [colorsToUse, setColorsToUse] = useState<string[]>([]);
   const navigate = useNavigate();
+  const {updateScreen} = useScreenStore();
 
   useEffect(() => {
     if (chapter && !title) {
@@ -33,14 +36,46 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
     if (chapter.imageLocal && !chImageLocal) {
       setChImageLocal(chapter.imageLocal);
     }
-    if (screens.length) {
+    if (screens) {
       setSections(screens);
     }
   }, [chapter, screens]);
 
+  useEffect(() => {
+    if (activeProject) {
+      const fromTheme = [...colorsToUse];
+      const storedColors = localStorage.getItem(`${activeProject.id}-stored-colors`);
+      if (storedColors) {
+          const toArray = storedColors.split(',');
+          const combinedArray = [...new Set([...toArray, ...activeProject.themeColors])];
+          setColorsToUse(combinedArray);
+      } else {
+          setColorsToUse(fromTheme);
+      }
+    }
+  }, [activeProject])
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
   };
+
+  const handleAddColorsToUse = (val: string) => {
+    const updatedThemeColors = [...colorsToUse, val];
+    if (updatedThemeColors.length > 8) {
+          const copy = [...colorsToUse];
+            const notThemedColors = copy.filter(c => !activeProject.themeColors.includes(c));
+            notThemedColors.shift();
+            notThemedColors.push(val);
+            const newCombined = [...activeProject.themeColors].concat([...notThemedColors]);
+            const toStorage = newCombined.map(c => c).join(',');
+            localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
+            setColorsToUse(newCombined);
+    } else {
+      const toStorage = updatedThemeColors.map(c => c).join(',');
+      localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
+      setColorsToUse(updatedThemeColors);
+    }
+  }
 
   const handleSectionChange = (index: number, value: string) => {
     const newSections = [...sections];
@@ -74,14 +109,19 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
     navigate(`screens/${id}`);
   };
 
-  const onDeleteImage = async(index: number) => {
+  const onDeleteImage = async (index: number) => {
     const copySections = [...sections];
     const copySingle = copySections[index];
     copySingle.imageLocal = '';
     copySingle.image = '';
-    await updateDoc(doc(db, screenDBKey, copySingle.id), {...copySingle});
+    await updateDoc(doc(db, screenDBKey, copySingle.id), { ...copySingle });
     copySections[index] = copySingle;
     setSections(copySections);
+  }
+
+  const saveScreen = (e: React.ChangeEvent<HTMLInputElement>, section: Screen) => {
+    e.preventDefault();
+    updateScreen(section);
   }
 
   return (
@@ -117,12 +157,8 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
         {sections.map((section, index) => (
           <SectionGroup key={index}>
             <h2>Screen {index + 1}</h2>
-            <TextArea
-              value={section.text}
-              onChange={(e) => handleSectionChange(index, e.target.value)}
-              rows={6}
-              placeholder={`Screen ${index + 1}`}
-            />
+            <ScreenTextEditor value={section.text} activeProject={activeProject} colorsToUse={colorsToUse} addColor={(val:string) => handleAddColorsToUse(val)}
+            handleChange={(val: string) => handleSectionChange(index, val)} />
             <ActionButtons>
               <input
                 type="file"
@@ -141,6 +177,7 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
               <RemoveButton type="button" onClick={() => removeScreen(section.id)}>
                 <DeleteIcon />
               </RemoveButton>
+              <ActionButton onClick={(e) => saveScreen(e, section)}>SAVE</ActionButton>
             </ActionButtons>
             <ImageList>
               {section.imageLocal && (

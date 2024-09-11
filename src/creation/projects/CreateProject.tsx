@@ -3,7 +3,7 @@ import { TextField, Button } from '@mui/material';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import Loading from '../../Loading';
-import { projectDBKey } from '../Creator';
+import { projectDBKey } from '../stores/ProjectStore';
 
 interface ProjectFormProps {
     userId: string;
@@ -27,17 +27,17 @@ const CreateProject: React.FC<ProjectFormProps> = ({ userId, exit }) => {
             const project = {
                 title,
                 userId,
-                hasCurrencies: false,
+                currencies: 0,
                 hasEnemies: false,
                 hasItems: false,
                 hasTitleScreen: false,
                 hasTransitions: false,
                 hasLoops: false,
-                voiceOversMuted: false,
                 chapterCount: 0,
-                pageCount: 0,
+                screenCount: 0,
                 imageCount: 0,
-                soundCount: 0
+                soundCount: 0,
+                themeColors: []
             };
 
             await addDoc(collection(db, projectDBKey), project);

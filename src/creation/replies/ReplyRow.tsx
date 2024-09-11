@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Button, TextField, Grid, Box, Typography } from "@mui/material";
 import RequirementHandler from '../RequirementHandler';
-import { Option, Reply, Requirement } from "./RepliesCreator";
+import { Option } from "./RepliesCreator";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
-import { Screen, screenDBKey } from "../routes/SingleChapter";
+import { Screen, screenDBKey } from "../stores/ScreenStore";
+import { Reply, Requirement } from "../stores/ReplyStore";
 
 interface ReplyRowProps {
   index: number;
@@ -128,7 +129,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Requirements:</Typography>
             {props.reply.requirements.map((req, index) => (
               <Typography key={`requirement${index}`} variant="body2" sx={{ color: "#333" }}>
-                Required to have {req.type === 'item' ? (req.value ? 'in your possession' : 'not in your possession') : (typeof req.greaterThan !== 'undefined' && req.greaterThan ? 'greater than ' + req.value : 'less than ' + req.value)} {req.keyWord.label}
+                Required to have {req.type === 'item' ? (req.value ? 'in your possession' : 'not in your possession') : (typeof req.greaterThan !== 'undefined' && req.greaterThan ? 'greater than ' + req.value : 'less than ' + req.value)} {req.keyWord}
               </Typography>
             ))}
           </Box>
@@ -139,7 +140,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             <Typography variant="subtitle1" sx={{ color: "#004080" }}>Effects:</Typography>
             {props.reply.effects.map((ef, index) => (
               <Typography key={`effect${index}`} variant="body2" sx={{ color: "#333" }}>
-                Causes user to {ef.value && typeof ef.value === 'number' ? (ef.value > 0 ? 'Gain' : 'Lose') : (ef.value ? 'Gain' : 'Lose')} {ef.type === 'currency' && ef.value} {ef.keyWord.label}
+                Causes user to {ef.value && typeof ef.value === 'number' ? (ef.value > 0 ? 'Gain' : 'Lose') : (ef.value ? 'Gain' : 'Lose')} {ef.type === 'currency' && ef.value} {ef.keyWord}
               </Typography>
             ))}
           </Box>

@@ -1,119 +1,46 @@
-import { collection, doc, getCountFromServer, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { db } from "../../firebaseConfig";
+import { useEffect, useState } from "react";
 import Loading from "../../Loading";
 import ProjectOverview from "../projects/ProjectOverview";
 import { Link } from "react-router-dom";
 import styled from '@emotion/styled';
 import { Button } from "@mui/material";
 import CreateProject from "../projects/CreateProject";
-import { projectDBKey } from "../Creator";
-import { chapterDBKey } from "./Chapters";
-
-export interface Project {
-    id: string;
-    userId: string;
-    title: string;
-    hasCurrencies: boolean;
-    hasEnemies: boolean;
-    hasItems: boolean;
-    hasTitleScreen: boolean;
-    hasTransitions: boolean;
-    hasLoops: boolean;
-    voiceOversMuted: boolean;
-    chapterCount: number;
-    pageCount: number;
-    imageCount: number;
-    soundCount: number;
-}
-
-export interface ProjectSlim {
-    id: string;
-    title: string;
-}
+import useProjectStore, { ProjectSlim } from "../stores/ProjectStore";
 
 interface ProjectsProps {
     userId: string | undefined;
-    projects: Project[];
-    activeProject: ProjectSlim | undefined;
-    setActiveProject: Dispatch<SetStateAction<ProjectSlim | undefined>>;
 }
 
-const Projects: React.FC<ProjectsProps> = ({ userId, projects, activeProject, setActiveProject }) => {
+const Projects: React.FC<ProjectsProps> = ({userId}) => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [showCreateNew, setShowCreateNew] = useState<boolean>(false);
-    const [lProjects, setLProjects] = useState<Project[]>([]);
+    const [updated, setUpdated] = useState<boolean>();
+    const { activeProject, projects, updateAPStats, updateActiveProject } = useProjectStore();
 
     useEffect(() => {
-        setLProjects(projects);
-        getStats();  
-    }, [projects]);
-
-    const getStats = async() => {
-        const lPCopy = [...lProjects];
-        if ( activeProject ) {
-            const mActiveProject = lPCopy.find( p => p.id===activeProject.id );
-            if ( mActiveProject ) {
-                try {
-                    const q = query(collection(db, chapterDBKey), where("projectId", "==", activeProject?.id));
-                    const ss = await getCountFromServer(q);
-                    const chapterCount = ss.data().count;
-                    mActiveProject.chapterCount = chapterCount;
-                    await updateDoc(doc(db, projectDBKey, mActiveProject.id), {...mActiveProject});
+        if(!updated) {
+            setUpdated(true);
+            updateStats();
+        }
+    }, [updated]);
     
-                    const filtered = lPCopy.filter( p => p.id!==activeProject.id );
-                    filtered.unshift(mActiveProject);
-                    setLProjects(filtered);
-                } catch (e) {
-                    console.error(e);
-                }
-            }
+    const updateStats = async() => {
+        if(activeProject) {
+            setIsLoading(true);
+            const lPCopy = [...projects];
+            await updateAPStats(lPCopy, activeProject);
+            setIsLoading(false);
         }
     }
 
-    const fetchProjects = async () => {
-        try {
-            const q = query(collection(db, projectDBKey), where("userId", "==", userId));
-            const querySnapshot = await getDocs(q);
-            const projectsList = querySnapshot.docs.map((doc) => {
-                return ({
-                id: doc.id,
-                ...doc.data(),
-            })}) as Project[];
-            const activeProjId = localStorage.getItem(`${userId}-active-project`);
-            if ( activeProjId ) {
-                const matchedProj = projectsList.find( p => p.id === activeProjId );
-                if ( matchedProj ) {
-                    setActiveProject(matchedProj);
-                    const filtered = projectsList.filter( p => p.id !== matchedProj.id );
-                    filtered.unshift(matchedProj);
-                    setLProjects(filtered);
-                } else {
-                    setLProjects(projectsList);
-                }
-            } else {
-                setLProjects(projectsList);
-            }
-            setIsLoading(false);
-        } catch (e) {
-            console.error(e);
-            setIsLoading(false);
-        }
-    };
-
     const selectProject = (proj: ProjectSlim) => {
-        if (activeProject?.id === proj?.id) {
-            setActiveProject(undefined)
-            localStorage.removeItem(`${userId}-active-project`);
-        } else {
-            setActiveProject(proj);
-            localStorage.setItem(`${userId}-active-project`, proj.id);
+        if(userId) {
+            updateActiveProject(proj, userId);
         }
     }
 
     const createProject = () => {
         setShowCreateNew(false);
-        fetchProjects();
     }
 
     return (
@@ -123,7 +50,7 @@ const Projects: React.FC<ProjectsProps> = ({ userId, projects, activeProject, se
                 <>
                     {!showCreateNew && (
                         <>
-                            {lProjects?.length ? lProjects.map((project, index) => (
+                            {projects?.length ? projects.map((project, index) => (
                                 <div style={{width: '100%', margin: '20px 0'}} key={'proj' + index}>
                                     <ProjectOverview activeProject={activeProject} selectProject={() => selectProject(project)} project={project} />
                                 </div>

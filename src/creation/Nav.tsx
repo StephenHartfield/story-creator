@@ -1,27 +1,26 @@
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import React, { Dispatch, SetStateAction, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import Breadcrumbs from './Breadcrumbs';
 import Chapters from './routes/Chapters';
 import Auth from './routes/Auth';
-import Projects, { Project, ProjectSlim } from './routes/Projects';
 import SingleChapter from './routes/SingleChapter';
 import SingleScreen from './routes/SingleScreen';
 import CurrencyManager from './routes/CurrencyManager';
 import TestScreen from './routes/TestSingleScreen';
 import Settings from './routes/Settings';
+import useProjectStore from './stores/ProjectStore';
+import Projects from './routes/Projects';
 
 interface NavProps {
   user: any;
-  projects: Project[];
-  activeProject: ProjectSlim | undefined;
-  setActiveProject: Dispatch<SetStateAction<ProjectSlim | undefined>>;
 }
 
-const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProject}) => {
+const Nav: React.FC<NavProps> = ({user}) => {
   const [isAssetsOpen, setIsAssetsOpen] = useState(false);
   const [isAddOnsOpen, setIsAddOnsOpen] = useState(false);
+  const { activeProject } = useProjectStore();
 
   const toggleAssets = () => {
     setIsAssetsOpen(!isAssetsOpen);
@@ -65,7 +64,7 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
           )}
 
           <NavButton>Settings</NavButton>
-          {activeProject ? <AProject>{activeProject.title}</AProject> : <AProject>NO PROJECT</AProject>}
+          {activeProject ? <AProject>{activeProject?.title}</AProject> : <AProject>NO PROJECT</AProject>}
           <LoginButton to="/login">{user && user.email ? 'LOG OUT' : 'LOG IN'}</LoginButton>
         </TopNav>
 
@@ -74,14 +73,14 @@ const Nav: React.FC<NavProps> = ({user, projects, activeProject, setActiveProjec
         <Content>
           <Base>
             <Routes>
-              <Route path="/projects" element={<Projects userId={user?.uid} projects={projects} activeProject={activeProject} setActiveProject={setActiveProject}/>} />
-              <Route path="/chapters" element={<Chapters userId={user?.uid} activeProject={activeProject} />} />
-              <Route path='/chapters/:chapterId' element={<SingleChapter activeProject={activeProject} />} />
-              <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen activeProject={activeProject} />} />
-              <Route path='/testing/:screenId' element={<TestScreen activeProject={activeProject} />} />
-              <Route path="/currency" element={<CurrencyManager activeProject={activeProject} />} />
-              <Route path="/settings/screens/:screenId" element={<Settings activeProject={activeProject} />} />
-              <Route path="/settings/chapters/:chapterId" element={<Settings activeProject={activeProject} />} />
+              <Route path="/projects" element={<Projects userId={user?.uid}/>} />
+              <Route path="/chapters" element={<Chapters userId={user?.uid} />} />
+              <Route path='/chapters/:chapterId' element={<SingleChapter />} />
+              <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen />} />
+              <Route path='/testing/:screenId' element={<TestScreen />} />
+              <Route path="/currency" element={<CurrencyManager />} />
+              <Route path="/settings/screens/:screenId" element={<Settings />} />
+              <Route path="/settings/chapters/:chapterId" element={<Settings />} />
               <Route path="/login" element={<Auth />} />
             </Routes>
           </Base>

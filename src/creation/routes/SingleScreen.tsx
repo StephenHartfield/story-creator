@@ -1,53 +1,36 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { ProjectSlim } from "./Projects"
-import { db } from "../../firebaseConfig";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import styled from '@emotion/styled';
-import { screenDBKey, Screen } from "./SingleChapter";
-import RepliesCreator, { Reply } from "../replies/RepliesCreator";
+import RepliesCreator from "../replies/RepliesCreator";
+import useProjectStore from "../stores/ProjectStore";
+import useScreenStore, { Screen } from "../stores/ScreenStore";
+import useReplyStore, { Reply } from "../stores/ReplyStore";
 
-export const repliesDBKey = 'replies';
 
-interface SingleScreenProps {
-    activeProject: ProjectSlim | undefined;
-}
-const SingleChapter: React.FC<SingleScreenProps> = ({ activeProject }) => {
+const SingleChapter: React.FC = () => {
     const { chapterId, screenId } = useParams<{ chapterId: string, screenId: string }>();
     const [screen, setScreen] = useState<Screen>();
     const [replies, setReplies] = useState<Reply[]>([]);
     const navigate = useNavigate();
+    const {activeProject} = useProjectStore();
+    const {getScreenById, updateScreens} = useScreenStore();
+    const {getRepliesByScreenId, addReply, updateReply, deleteReply} = useReplyStore();
 
     useEffect(() => {
-        if (chapterId && screenId) {
-            getScreenById();
-        }
+        getScreenAndReplies();
     }, [chapterId, screenId]);
 
-    const getScreenById = async () => {
+    const getScreenAndReplies = async () => {
         if (screenId) {
             try {
-                const screenRef = doc(db, screenDBKey, screenId);
-                const screenSnap = await getDoc(screenRef);
-
-                if (screenSnap.exists()) {
-                    const screenData = { id: screenSnap.id, ...screenSnap.data() };
-                    setScreen(screenData as Screen);
-                    try {
-                        const q = query(collection(db, repliesDBKey), where("screenId", "==", screenData.id));
-                        const querySnapshot = await getDocs(q);
-                        const repliesList = querySnapshot.docs.map((doc) => ({
-                            id: doc.id,
-                            ...doc.data(),
-                        })) as Reply[];
-                        if (repliesList.length) {
-                            const sorted = repliesList.sort((a, b) => a.order - b.order);
-                            setReplies(sorted);
-                        } else {
-                            addReply();
-                        }
-                    } catch (e) {
-                        console.error('Error fetching related screens ' + e);
+                const screen = await getScreenById(screenId);
+                if (screen) {
+                    setScreen(screen);
+                    const repliesList = await getRepliesByScreenId(screen.id);
+                    if (repliesList.length) {
+                        setReplies(repliesList);
+                    } else {
+                        addReplyHandle();
                     }
                 } else {
                     console.log('No such chapter found!');
@@ -61,12 +44,12 @@ const SingleChapter: React.FC<SingleScreenProps> = ({ activeProject }) => {
     const submitData = async (repls: Reply[], s: Screen) => {
         if ( s.id ) {
             try {
-                await updateDoc(doc(db, screenDBKey, s.id), {...s});
+                await updateScreens([{...s}]);
                 repls.forEach( async (r) => {
                     if ( r.id ) {
-                        await updateDoc(doc(db, repliesDBKey, r.id), {...r});
+                        await updateReply({...r}, true);
                     } else {
-                        await addDoc(collection(db, repliesDBKey), r);
+                        await addReply(r);
                     }
                 })
                 navigate(`/chapters/${chapterId}`);
@@ -76,46 +59,29 @@ const SingleChapter: React.FC<SingleScreenProps> = ({ activeProject }) => {
         }
     }
 
-    const addReply = async() => {
-        const newReply = {text: '', screenId: screenId, order: replies.length + 1, requirements: [], effects: []};
-        const replyData = await addDoc(collection(db, repliesDBKey), newReply);
-        const ret = await getDoc(replyData);
-        const r = {...ret.data(), id: ret.id};
-        setReplies([...replies, r as Reply ]);
+    const addReplyHandle = async() => {
+        const newReply: any = {text: '', screenId: screenId, order: replies.length + 1, requirements: [], effects: []};
+        await addReply(newReply);
+        const newReplies = await getRepliesByScreenId(newReply.screenId);
+        console.log( newReplies );
+        setReplies(newReplies);
     }
 
     const removeReply = async(id: string) => {
         const userConfirmed = window.confirm('Are you sure you want to delete this reply?');
 
-        if (userConfirmed) {
-            try {
-                const replyRef = doc(db, repliesDBKey, id);
-                await deleteDoc(replyRef);
-                if (replies.length > 1) {
-                    const repliesCopy = [...replies];
-                    const filtered = repliesCopy.filter(r => r.id !== id);
-                    filtered.forEach( async(r, idx) => await updateReplyOrder(r, idx));
-                    setReplies(filtered);
-                } else {
-                    setReplies([]);
-                }
-                console.log(`Reply ${id} deleted.`);
-            } catch (e) {
-                console.error(e);
-            }
+        if (userConfirmed && screenId) {
+            await deleteReply(id, screenId);
+            const repliesCopy = await getRepliesByScreenId(screenId);
+            setReplies(repliesCopy);
         }
-    }
-
-    const updateReplyOrder = async( r: Reply, idx: number ) => {
-        r.order = idx + 1;
-        await updateDoc(doc(db, repliesDBKey, r.id), {...r});
     }
 
     return (
         <>
             <StyledLink to={`/chapters/${chapterId}`}>Back to List</StyledLink>
             {activeProject && screen && <RepliesCreator
-                addReply={addReply}
+                addReply={addReplyHandle}
                 removeReply={(id: string) => removeReply(id)}
                 setReplies={setReplies}
                 activeProjectId={activeProject.id}

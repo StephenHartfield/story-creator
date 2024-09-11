@@ -1,69 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { ProjectSlim } from './Projects';
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import useProjectStore from '../stores/ProjectStore';
+import useCurrencyStore from '../stores/CurrencyStore';
 
-export interface Currency {
-  displayName: string;
-  keyWord: string;
-  startingValue: number;
-  projectId: string;
-  id: string;
-}
-
-export const currencyDBKey = 'currencies';
-
-interface CurrencyProps {
-  activeProject: ProjectSlim | undefined;
-}
-
-const CurrencyManager: React.FC<CurrencyProps> = ({ activeProject }) => {
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
+const CurrencyManager: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [keyWord, setKeyWord] = useState('');
   const [startingValue, setStartingValue] = useState<number | ''>('');
+  const {activeProject} = useProjectStore();
+  const {currencies, addCurrency, deleteCurrency} = useCurrencyStore();
 
-  useEffect(() => {
-    if(activeProject) {
-      getCurrencies();
-    }
-  }, [activeProject])
-
-  const getCurrencies = async() => {
-    const q = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
-    const querySnapshot = await getDocs(q);
-    const currencyList = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Currency[];
-    setCurrencies(currencyList);
-  }
-
-  const addCurrency = async() => {
+  const addCurrencyHandle = async() => {
     if (displayName && keyWord && startingValue !== '') {
       const newCurrency = { displayName, keyWord, startingValue: Number(startingValue), projectId: activeProject?.id };
-      const currencyData = await addDoc(collection(db, currencyDBKey), newCurrency);
-      const ret = await getDoc(currencyData);
-      const c = { ...ret.data(), id: ret.id };
-      setCurrencies([...currencies, c as Currency]);
+      addCurrency(newCurrency);
       setDisplayName('');
       setKeyWord('');
       setStartingValue('');
-    }
-  };
-
-  const removeCurrency = async (id: string) => {
-    try {
-      const currencyRef = doc(db, currencyDBKey, id);
-      await deleteDoc(currencyRef);
-      const screensCopy = [...currencies];
-      const filtered = screensCopy.filter(s => s.id !== id);
-      setCurrencies(filtered);
-      console.log(`Currency ${id} deleted.`);
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -88,13 +42,13 @@ const CurrencyManager: React.FC<CurrencyProps> = ({ activeProject }) => {
           value={startingValue}
           onChange={(e) => setStartingValue(e.target.value === '' ? '' : Number(e.target.value))}
         />
-        <AddButton onClick={addCurrency}>Add Currency</AddButton>
+        <AddButton onClick={addCurrencyHandle}>Add Currency</AddButton>
       </Form>
       <CurrencyList>
         {currencies.map((currency, index) => (
           <CurrencyTag key={index}>
             {currency.displayName} ({currency.keyWord}, {currency.startingValue})
-            <DeleteButton onClick={() => removeCurrency(currency.id)}>
+            <DeleteButton onClick={() => deleteCurrency(currency.id)}>
               <DeleteIcon />
             </DeleteButton>
           </CurrencyTag>

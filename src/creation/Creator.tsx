@@ -1,28 +1,31 @@
 import { useEffect, useState } from "react";
-import FormSections from "./chapters/FormSections";
 import styled from '@emotion/styled';
-import ChapterSelector from "./chapters/ChapterSelector";
-import RepliesCreator from "./replies/RepliesCreator";
-import AddOns from "./AddOns";
 import Nav from "./Nav";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "../firebaseConfig";
+import { auth } from "../firebaseConfig";
 import Loading from "../Loading";
-import { Project, ProjectSlim } from "./routes/Projects";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import useProjectStore from "./stores/ProjectStore";
+import useChapterStore from "./stores/ChapterStore";
+import useScreenStore from "./stores/ScreenStore";
+import useSettingStore from "./stores/SettingsStore";
+import useCurrencyStore from "./stores/CurrencyStore";
 
 export interface SelectedSection {
     id: string;
     text: string;
 }
-export const projectDBKey = 'projects';
 
 const Creator: React.FC = () => {
-    const [projects, setProjects] = useState<Project[]>([]);
     const [topNavWidth, setTopNavWidth] = useState<number>();
     const [user, setUser] = useState<any>();
+    const [initiated, setInitiated] = useState<boolean>();
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [activeProject, setActiveProject] = useState<ProjectSlim>();
+    const [currentProjectId, setCurrentProjectId] = useState<string>();
+    const { activeProject, initProjects } = useProjectStore();
+    const { initChapters, emptyChapters } = useChapterStore();
+    const { initScreens, emptyScreens } = useScreenStore();
+    const { initSettings, emptySettings } = useSettingStore();
+    const { initCurrencies, emptyCurrencies } = useCurrencyStore();
 
     const updateTopNavWidth = () => {
         setTopNavWidth(document.documentElement.clientWidth);
@@ -35,7 +38,6 @@ const Creator: React.FC = () => {
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 setUser(user);
-                fetchProjects(user);
             }
             setIsLoading(false);
         });
@@ -44,51 +46,42 @@ const Creator: React.FC = () => {
         };
     }, []);
 
-    const fetchProjects = async ( lUser: any ) => {
-        try {
-            const q = query(collection(db, projectDBKey), where("userId", "==", lUser.uid));
-            const querySnapshot = await getDocs(q);
-            const projectsList = querySnapshot.docs.map((doc) => {
-                return ({
-                id: doc.id,
-                ...doc.data(),
-            })}) as Project[];
-            const activeProjId = localStorage.getItem(`${lUser.uid}-active-project`);
-            if ( activeProjId ) {
-                const matchedProj = projectsList.find( p => p.id === activeProjId );
-                if ( matchedProj ) {
-                    setActiveProject(matchedProj);
-                    const filtered = projectsList.filter( p => p.id !== matchedProj.id );
-                    filtered.unshift(matchedProj);
-                    setProjects(filtered);
-                } else {
-                    setProjects(projectsList);
-                }
-            } else {
-                setProjects(projectsList);
-            }
-            setIsLoading(false);
-        } catch (e) {
-            console.error(e);
-            setIsLoading(false);
+    useEffect(() => {
+        if ( user?.uid && (!currentProjectId && !activeProject?.id) ) {
+            initData(user.uid);
         }
-    };
+        if ( currentProjectId && activeProject && currentProjectId !== activeProject.id ) {
+            initData(user.uid, activeProject.id);
+        }
+        if ( currentProjectId && !activeProject?.id ) {
+            emptyData();
+        }
+    }, [user, activeProject])
+
+    const initData = async(userId: string, activeProjectId?: string) => {
+        const aId = activeProjectId ? activeProjectId : await initProjects(userId);
+        if ( aId ) {
+            setCurrentProjectId(aId);
+            const chReady: boolean = await initChapters(aId);
+            const scrnReady: boolean = await initScreens(aId);
+            const settingReady: boolean = await initSettings(aId);
+            const currenciesReady: boolean = await initCurrencies(aId);
+            setInitiated(chReady && scrnReady && settingReady && currenciesReady);
+        }
+    }
+
+    const emptyData = () => {
+        setCurrentProjectId('EMPTIED');
+        emptyChapters();
+        emptyScreens();
+        emptySettings();
+        emptyCurrencies();
+    }
 
     return (
         <Base style={{ width: topNavWidth, minWidth: '100%', overflowY: 'scroll' }}>
             <Loading isLoading={isLoading} />
-            {/* <AddOns />
-            {!selectedSection && <Base>
-                <ChapterSelector setSelectionId={setSelectedChapter} isSelectingChapter={true} isSelectingSection={false}/>
-                <FormSections selectedChapter={selectedChapter} currentImages={currentImages} setCurrentImages={setCurrentImages} setSelectedSection={setSelectedSection} />
-                {currentImages && currentImages.map( (image, imgIndex) => (
-                    <ImageThumbnail key={imgIndex+'sidebar'} src={image} alt={`Image ${imgIndex + 1}`} />
-                ) )}
-            </Base>}
-            {selectedSection && <Base>
-                <RepliesCreator id={selectedSection.id} text={selectedSection.text}></RepliesCreator>
-            </Base>} */}
-            <Nav projects={projects} setActiveProject={setActiveProject} activeProject={activeProject} user={user} />
+            {initiated && <Nav user={user} />}
         </Base>
     )
 }

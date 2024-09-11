@@ -1,33 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
-import { Screen, screenDBKey } from './SingleChapter';
-import { Chapter, chapterDBKey } from './Chapters';
-import { Currency, currencyDBKey } from './CurrencyManager';
 import Select from 'react-dropdown-select';
 import { Option } from '../replies/RepliesCreator';
-import { ProjectSlim } from './Projects';
+import useProjectStore from '../stores/ProjectStore';
+import useChapterStore, { Chapter } from '../stores/ChapterStore';
+import useScreenStore, { Screen } from '../stores/ScreenStore';
+import useSettingStore, { Setting } from '../stores/SettingsStore';
+import useCurrencyStore from '../stores/CurrencyStore';
 
-export const settingsDBKey = 'settings';
-
-export interface Setting {
-    id: string;
-    timeForRepliesToDisplay: number;
-    autoAdvances: boolean;
-    showCurrencies?: string[];
-    timeToAnswer: number;
-    defaultBackground: string;
-    screenId?: string;
-    chapterId?: string;
-}
-
-interface SettingProps {
-    activeProject: ProjectSlim | undefined;
-}
-
-const Settings: React.FC<SettingProps> = ({activeProject}) => {
+const Settings: React.FC = () => {
     const [timeForRepliesToDisplay, setTimeForRepliesToDisplay] = useState<number>();
     const [autoAdvances, setAutoAdvances] = useState<boolean>();
     const [timeToAnswer, setTimeToAnswer] = useState<number>();
@@ -41,6 +23,11 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
     const { screenId } = useParams<{ screenId: string }>();
     const { chapterId } = useParams<{ chapterId: string }>();
     const navigate = useNavigate();
+    const {activeProject} = useProjectStore();
+    const {getChapterById} = useChapterStore();
+    const {getScreenById} = useScreenStore();
+    const {getSettingByChapterId, getSettingByScreenId, updateOrAddSetting} = useSettingStore();
+    const {currencies} = useCurrencyStore();
 
     useEffect(() => {
         if (activeProject) {
@@ -56,33 +43,26 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
 
     const fetchSettings = async (id: string) => {
         try {
-            const q = query(collection(db, settingsDBKey), where(screenId ? 'screenId' : 'chapterId', "==", id));
-            const settingSnap = await getDocs(q);
-
-            const q2 = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
-            const querySnapshot = await getDocs(q2);
-            const currencyList = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as Currency[];
-            const mappedList = currencyList.map(c => ({ value: c.keyWord, label: c.displayName }));
+            const setting = screenId ? getSettingByScreenId(id) : getSettingByChapterId(id);
+            const mappedList = currencies.map(c => ({ value: c.keyWord, label: c.displayName }));
             setCurrencyOpts(mappedList);
-            if (settingSnap.docs[0]) {
-                const se = { ...settingSnap.docs[0].data(), id: settingSnap.docs[0].id } as Setting;
-                setTimeForRepliesToDisplay(se.timeForRepliesToDisplay);
-                setAutoAdvances(se.autoAdvances);
-                setTimeToAnswer(se.timeToAnswer);
-                setDefaultBackground(se.defaultBackground);
-                if(se.showCurrencies) {
-                    setShowCurrencies(se.showCurrencies);
+            if (setting) {
+                setTimeForRepliesToDisplay(setting.timeForRepliesToDisplay);
+                setAutoAdvances(setting.autoAdvances);
+                setTimeToAnswer(setting.timeToAnswer);
+                setDefaultBackground(setting.defaultBackground);
+                if(setting.showCurrencies) {
+                    setShowCurrencies(setting.showCurrencies);
                 }
-                setSettingId(se.id);
+                setSettingId(setting.id);
 
-                if (se.showCurrencies && se.showCurrencies.length) {
-                    setCurrenciesSelected(mappedList.filter(c => se.showCurrencies?.includes(c.value)));
+                if (setting.showCurrencies && setting.showCurrencies.length) {
+                    setCurrenciesSelected(mappedList.filter(c => setting.showCurrencies?.includes(c.value)));
                 }
-                fetchScreenData(id, mappedList, se);
-            } else {
+                if(screenId) {
+                    fetchScreenData(id, mappedList, setting);
+                }
+            } else if(screenId) {
                 fetchScreenData(id, mappedList);
             }
         } catch (e) {
@@ -92,18 +72,13 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
 
     const fetchScreenData = async(id: string, mappedList: {value: string, label: string}[], currSettings?: Setting) => {
         try {
-            const screenRef = doc(db, screenDBKey, id);
-            const screenSnap = await getDoc(screenRef);
-
-            if (screenSnap.exists()) {
-                const screenData = { id: screenSnap.id, ...screenSnap.data() } as Screen;
-                setScreen(screenData);
+            const screen = await getScreenById(id);
+            if (screen) {
+                setScreen(screen);
 
                 //find chapter defaults to inherit if not already filled
-                const q = query(collection(db, settingsDBKey), where('chapterId', "==", screenData.chapterId));
-                const settingChSnap = await getDocs(q);
-                if (settingChSnap.docs[0]) {
-                    const se = { ...settingChSnap.docs[0].data(), id: settingChSnap.docs[0].id } as Setting;
+                const se = getSettingByChapterId(screen.chapterId);
+                if (se) {
                     if(typeof timeForRepliesToDisplay === 'undefined' && typeof se.timeForRepliesToDisplay !== 'undefined') {
                         setTimeForRepliesToDisplay(se.timeForRepliesToDisplay);
                     }
@@ -129,12 +104,9 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
 
     const fetchChapterData = async (id: string) => {
         try {
-            const chapterRef = doc(db, chapterDBKey, id);
-            const chapterSnap = await getDoc(chapterRef);
-
-            if (chapterSnap.exists()) {
-                const chapterData = { id: chapterSnap.id, ...chapterSnap.data() };
-                setChapter(chapterData as Chapter);
+            const chapter = await getChapterById(id);
+            if (chapter) {
+                setChapter(chapter);
             }
         } catch (e) {
             console.error(e);
@@ -144,20 +116,27 @@ const Settings: React.FC<SettingProps> = ({activeProject}) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const settingsData: any = {
-            timeForRepliesToDisplay,
-            autoAdvances,
-            timeToAnswer,
-            defaultBackground,
-            showCurrencies,
+            projectId: activeProject?.id,
             screenId: screenId || '',
             chapterId: chapterId || ''
         };
+        if (timeForRepliesToDisplay) {
+            settingsData.timeForRepliesToDisplay = timeForRepliesToDisplay;
+        }
+        if (autoAdvances) {
+            settingsData.autoAdvances = autoAdvances;
+        }
+        if (timeToAnswer) {
+            settingsData.timeToAnswer = timeToAnswer;
+        }
+        if (defaultBackground) {
+            settingsData.defaultBackground = defaultBackground;
+        }
+        if (showCurrencies) {
+            settingsData.showCurrencies = showCurrencies;
+        }
         try {
-            if (settingId) {
-                await updateDoc(doc(db, settingsDBKey, settingId), settingsData);
-            } else {
-                await addDoc(collection(db, settingsDBKey), settingsData);
-            }
+            updateOrAddSetting(settingsData, settingId);
             const chi = chapterId ? chapterId : screen?.chapterId;
             navigate(`/chapters/${chi}`);
         } catch (e) {

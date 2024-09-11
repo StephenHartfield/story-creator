@@ -4,32 +4,12 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import styled from '@emotion/styled';
 import ChapterSelector from '../chapters/ChapterSelector';
-import Requirement from '../RequirementHandler';
 import ReplyRow from './ReplyRow';
-import { Screen } from '../routes/SingleChapter';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
-import { Currency, currencyDBKey } from '../routes/CurrencyManager';
-import { Chapter, chapterDBKey } from '../routes/Chapters';
 import Loading from '../../Loading';
-
-export interface Reply {
-    id: string;
-    order: number;
-    text?: string;
-    screenId: string;
-    linkToSectionId?: string;
-    requirements: Requirement[];
-    effects: Requirement[];
-}
-
-export interface Requirement {
-    addedAs: 'requirement' | 'effect' | undefined;
-    type: 'currency' | 'item' | undefined;
-    value: number | boolean | undefined;
-    keyWord: string;
-    greaterThan?: boolean;
-}
+import useChapterStore from '../stores/ChapterStore';
+import { Screen } from '../stores/ScreenStore';
+import useCurrencyStore from '../stores/CurrencyStore';
+import useReplyStore, { Reply } from '../stores/ReplyStore';
 
 interface RepliesCProps {
     submit: (repls: Reply[], scrn: Screen) => Promise<void>;
@@ -46,15 +26,16 @@ export interface Option {
     label: string;
 }
 
-
 const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
     const [replies, setReplies] = useState<Reply[]>([]);
     const [screen, setScreen] = useState<Screen>();
     const [chapterSelectorOpen, setChapterSelectorOpen] = useState<boolean>(false);
     const [indexToAddLinkTo, setIndexToAddLinkTo] = useState<number>();
     const [currencyOpts, setCurrencyOpts] = useState<Option[]>([])
-    const [chapters, setChapters] = useState<Chapter[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const {chapters} = useChapterStore();
+    const {currencies} = useCurrencyStore();
+    const {updateReply} = useReplyStore();
 
     useEffect(() => {
         getCurrencies();
@@ -68,50 +49,30 @@ const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
     }, [props.replies, props.screen]);
 
     const getCurrencies = async () => {
-        const q = query(collection(db, currencyDBKey), where("projectId", "==", props.activeProjectId));
-        const querySnapshot = await getDocs(q);
-        const currencyList = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })) as Currency[];
-        setCurrencyOpts(currencyList.map(c => ({ value: c.keyWord, label: c.displayName })));
+        setCurrencyOpts(currencies.map(c => ({ value: c.keyWord, label: c.displayName })));
     }
-
-    const fetchChapters = async () => {
-        try {
-            const q = query(collection(db, chapterDBKey), where("projectId", "==", props.activeProjectId));
-            const querySnapshot = await getDocs(q);
-            const chaptersList = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as Chapter[];
-            setChapters(chaptersList);
-            setIsLoading(false);
-        } catch (e) {
-            console.error(e);
-            setIsLoading(false);
-        }
-    };
 
     const toggleChapterSelector = async (index: number) => {
         setIsLoading(true);
-        await fetchChapters();
         setIndexToAddLinkTo(index);
         setChapterSelectorOpen(!chapterSelectorOpen);
     };
 
-    const setLinkTo = (id: string) => {
+    const setLinkTo = async(id: string) => {
         if (indexToAddLinkTo !== undefined) {
             const updatedReplies = [...replies];
             updatedReplies[indexToAddLinkTo].linkToSectionId = id;
+            await updateReply(updatedReplies[indexToAddLinkTo], false);
             props.setReplies(updatedReplies);
             setChapterSelectorOpen(!chapterSelectorOpen);
+            setIsLoading(false);
         }
     }
 
-    const updateReply = (rep: Reply, index: number) => {
+    const updateReplyHandle = async(rep: Reply, index: number) => {
         const updatedReplies = [...replies];
         updatedReplies[index] = rep;
+        await updateReply(rep, false);
         props.setReplies(updatedReplies);
     }
 
@@ -125,7 +86,7 @@ const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
                 {/* Dynamic Replies */}
                 {replies.map((reply, index) => (
                     <ReplyContainer key={index}>
-                        <ReplyRow currencies={currencyOpts} updateReply={(rep: Reply) => updateReply(rep, index)} index={index} reply={reply} toggleChapterSelector={() => toggleChapterSelector(index)} />
+                        <ReplyRow currencies={currencyOpts} updateReply={(rep: Reply) => updateReplyHandle(rep, index)} index={index} reply={reply} toggleChapterSelector={() => toggleChapterSelector(index)} />
                         <RemoveButton onClick={() => props.removeReply(reply.id)}>
                             <DeleteIcon />
                         </RemoveButton>

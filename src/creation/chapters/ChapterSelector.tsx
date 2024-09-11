@@ -11,13 +11,13 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import ReplyIcon from '@mui/icons-material/StarRate';
 import styled from '@emotion/styled';
-import { Chapter } from '../routes/Chapters';
-import { ProjectSlim } from '../routes/Projects';
 import { useNavigate } from 'react-router-dom';
-import { Screen, screenDBKey } from '../routes/SingleChapter';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db, storage } from '../../firebaseConfig';
 import { getDownloadURL, ref } from 'firebase/storage';
+import { Chapter } from '../stores/ChapterStore';
+import { ProjectSlim } from '../stores/ProjectStore';
+import useScreenStore, { Screen, screenDBKey } from '../stores/ScreenStore';
 
 interface Section {
     id: string;
@@ -42,6 +42,7 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
     const [openChapters, setOpenChapters] = useState<number[]>([]);
     const [screens, setScreens] = useState<Screen[]>([]);
     const navigate = useNavigate();
+    const {getScreensByChapterId} = useScreenStore();
 
     const toggleChapter = async (index: number) => {
         if (openChapters.includes(index)) {
@@ -49,21 +50,8 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
         } else {
             setOpenChapters([...openChapters, index]);
             try {
-                const q = query(collection(db, screenDBKey), where("chapterId", "==", props.chapters[index].id));
-                const querySnapshot = await getDocs(q);
-                const screensList = await Promise.all( querySnapshot.docs.map(async(doc) => {
-                    if (doc.data().image) {
-                        const fileRef = ref(storage, doc.data().image);
-                        const url = await getDownloadURL(fileRef);
-                        return { ...doc.data(), id: doc.id, imageLocal: url} as Screen;
-                    } else {
-                        return {id: doc.id, ...doc.data()} as Screen;
-                    }
-                }));
-                if (screensList.length) {
-                    const sorted = screensList.sort((a, b) => a.order - b.order);
-                    setScreens(sorted);
-                }
+                const screens: Screen[] = await getScreensByChapterId(props.chapters[index].id);
+                setScreens(screens);
             } catch (e) {
                 console.error(e);
             }
@@ -203,7 +191,7 @@ const RepliesButton = styled(IconButton)`
   margin-left: auto;
 `;
 
-const ActionButton = styled(Button)<{$delete?:boolean}>`
+const ActionButton = styled(Button, {shouldForwardProp: (prop) => prop !== "$delete"})<{$delete?:boolean}>`
   background-color: ${props => props.$delete ? 'red' : 'lightgreen'};
   color: ${props => props.$delete ? 'white' : 'purple'};
   border: 1px solid purple;
@@ -214,7 +202,7 @@ const ActionButton = styled(Button)<{$delete?:boolean}>`
   }
 `;
 
-const StyledListItem = styled(ListItem) <{ $isSelectable: boolean, $chapter?: boolean }>`
+const StyledListItem = styled(ListItem, {shouldForwardProp: (prop) => prop !== "$isSelectable" && prop !== "$chapter"}) <{ $isSelectable: boolean, $chapter?: boolean }>`
     &:hover {
         background-color: ${props => props.$isSelectable ? (props.$chapter ? 'coral' : 'green') : (props.$chapter && 'lightgrey')};
         color: ${props => props.$isSelectable && 'white'};

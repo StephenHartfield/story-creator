@@ -1,29 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import styled from '@emotion/styled';
-import { db, storage } from '../../firebaseConfig';
-import { Screen, screenDBKey } from './SingleChapter';
-import { repliesDBKey } from './SingleScreen';
-import { Reply } from '../replies/RepliesCreator';
 import { TypeAnimation } from 'react-type-animation';
-import { getDownloadURL, ref } from 'firebase/storage';
+import parse from 'html-react-parser';
+import DOMPurify from 'dompurify';
 import Loading from '../../Loading';
-import { Setting, settingsDBKey } from './Settings';
-import { Currency, currencyDBKey } from './CurrencyManager';
-import { ProjectSlim } from './Projects';
-import { Button } from '@mui/material';
+import useProjectStore from '../stores/ProjectStore';
+import useScreenStore, { Screen } from '../stores/ScreenStore';
+import useSettingStore, { Setting } from '../stores/SettingsStore';
+import useCurrencyStore, { Currency } from '../stores/CurrencyStore';
+import useReplyStore, { Reply } from '../stores/ReplyStore';
 
 export interface UserCurrency {
     currency: Currency;
     userValue: number;
 }
 
-interface TestProps {
-    activeProject: ProjectSlim | undefined;
-}
-
-const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
+const TestScreen: React.FC = () => {
     const { screenId } = useParams<{ screenId: string }>();
     const [screen, setScreen] = useState<Screen | null>(null);
     const [replies, setReplies] = useState<Reply[] | null>(null);
@@ -32,39 +25,32 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     const [settings, setSettings] = useState<Setting>();
     const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
     const [readyToTest, setReadyToTest] = useState<boolean>(false);
+    const [display, setDisplay] = useState<any>();
     const navigate = useNavigate();
+    const { activeProject } = useProjectStore();
+    const { getScreenById } = useScreenStore();
+    const { getSettingByScreenId, getSettingByChapterId } = useSettingStore()
+    const { currencies } = useCurrencyStore();
+    const { getRepliesByScreenId } = useReplyStore();
 
     useEffect(() => {
         const fetchScreen = async () => {
             setIsLoading(true);
             if (screenId) {
-                const screenRef = doc(db, screenDBKey, screenId);
-                const screenDoc = await getDoc(screenRef);
-                if (screenDoc.exists()) {
-                    let sc: any = {};
-                    const setts = await fetchSettings({ ...screenDoc.data(), id: screenDoc.id } as Screen);
-                    if (screenDoc.data().image) {
-                        const fileRef = ref(storage, screenDoc.data().image);
-                        const url = await getDownloadURL(fileRef);
-                        sc = { ...screenDoc.data(), id: screenDoc.id, imageLocal: url } as Screen;
-                    } else {
-                        if (setts) {
-                            setDefaultBg(setts.defaultBackground);
-                        }
-                        sc = { ...screenDoc.data(), id: screenDoc.id } as Screen;
+                const screen = await getScreenById(screenId);
+                if (screen) {
+                    const setts = fetchSettings(screen);
+                    if (setts && !screen.imageLocal) {
+                        setDefaultBg(setts.defaultBackground);
                     }
-                    setScreen(sc);
-                    const q = query(collection(db, repliesDBKey), where("screenId", "==", screenId));
-                    const querySnapshot = await getDocs(q);
-                    const repliesList = querySnapshot.docs.map((doc) => ({
-                        id: doc.id,
-                        ...doc.data(),
-                    })) as Reply[];
+                    setScreen(screen);
+                    runFadeIn();
+                    const repliesList = await getRepliesByScreenId(screen.id);
                     if (repliesList.length) {
                         const sorted = repliesList.sort((a, b) => a.order - b.order);
                         setReplies(sorted);
                     } else {
-                        setReplies([]);
+                        setReplies([{ text: 'Continue', linkToSectionId: screen.linkToNextScreen, id: '', order: 1, screenId: '', requirements: [], effects: [] }]);
                     }
                     setIsLoading(false);
                 } else {
@@ -73,25 +59,25 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
                 }
             }
         };
-        if(activeProject && !readyToTest) {
+        if (activeProject && !readyToTest) {
             initializeTest();
         }
         fetchScreen();
     }, [screenId, activeProject]);
 
     useEffect(() => {
-        if(replies && replies.length && userCurrencies.length) {
+        if (replies && replies.length && userCurrencies.length) {
             //hide if requirement not met
             const indexesToRemove: number[] = [];
             replies.forEach((r, i) => {
-                if(r.requirements.length) {
+                if (r.requirements.length) {
                     r.requirements.forEach(req => {
-                        if(req.type==='currency') {
-                            const currencyToCheck = userCurrencies.find(uc => uc.currency.keyWord===req.keyWord);
-                            if(currencyToCheck) {
+                        if (req.type === 'currency') {
+                            const currencyToCheck = userCurrencies.find(uc => uc.currency.keyWord === req.keyWord);
+                            if (currencyToCheck) {
                                 if (req.greaterThan && currencyToCheck.userValue <= (req.value as number)) {
                                     indexesToRemove.push(i);
-                                } else if(!req.greaterThan && currencyToCheck.userValue >= (req.value as number)) {
+                                } else if (!req.greaterThan && currencyToCheck.userValue >= (req.value as number)) {
                                     indexesToRemove.push(i);
                                 }
                             } else {
@@ -108,32 +94,23 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     }, [userCurrencies, isLoading]);
 
     const initializeTest = async () => {
-        const q = query(collection(db, currencyDBKey), where("projectId", "==", activeProject?.id));
-        const querySnapshot = await getDocs(q);
-        const currencyList = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        })) as Currency[];
-        const userCurrencies = currencyList.map(curr => ({ currency: curr, userValue: curr.startingValue || 0 }));
+        const userCurrencies = currencies.map(curr => ({ currency: curr, userValue: curr.startingValue || 0 }));
         setUserCurrencies(userCurrencies);
     }
 
-    const fetchSettings = async (scrn: Screen): Promise<Setting | null> => {
+    const fetchSettings = (scrn: Screen): Setting | null => {
         try {
-            const q = query(collection(db, settingsDBKey), where('screenId', "==", scrn.id));
-            const settingSnap = await getDocs(q);
-
-            if (settingSnap.docs[0]) {
-                const se = { ...settingSnap.docs[0].data(), id: settingSnap.docs[0].id } as Setting;
-                setSettings(se);
-                return se;
+            const sSetting = getSettingByScreenId(scrn.id);
+            if (sSetting) {
+                setSettings(sSetting);
+                return sSetting;
             } else {
-                const q = query(collection(db, settingsDBKey), where('chapterId', "==", scrn.chapterId));
-                const settingCSnap = await getDocs(q);
-                if (settingCSnap.docs[0]) {
-                    const sc = { ...settingCSnap.docs[0].data(), id: settingCSnap.docs[0].id } as Setting;
-                    setSettings(sc);
-                    return sc;
+                const cSetting = getSettingByChapterId(scrn.chapterId);
+                if (cSetting) {
+                    setSettings(cSetting);
+                    return cSetting;
+                } else {
+                    setSettings(undefined);
                 }
             }
         } catch (e) {
@@ -143,13 +120,13 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     }
 
     const handleReplyClick = (reply: Reply) => {
-        if ( reply.effects.length > 0) {
+        if (reply.effects.length > 0) {
             const userCurrenciesCopy = [...userCurrencies];
             reply.effects.forEach(e => {
-                if(e.type==='currency') {
+                if (e.type === 'currency') {
                     let matchedI = 0;
                     const currencyToChange = userCurrenciesCopy.find((uc, idx) => {
-                        if (uc.currency.keyWord===e.keyWord) {
+                        if (uc.currency.keyWord === e.keyWord) {
                             matchedI = idx;
                             return uc;
                         }
@@ -166,7 +143,7 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     }
 
     const handleUserCurrency = (key: string, val: any) => {
-        if (val==='' || (!isNaN(val) && !isNaN(parseFloat(val)))) {
+        if (val === '' || (!isNaN(val) && !isNaN(parseFloat(val)))) {
             const userCopy = [...userCurrencies];
             let matchedi = 0;
             const match = userCopy.find((uc, idx) => {
@@ -186,10 +163,41 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
     }
 
     const startTest = () => {
-        // userCurrencies.forEach(c => {
-        //     localStorage.setItem(`user-currency-${activeProject?.id}-${c.currency.keyWord}`, c.userValue.toString());
-        // })
         setReadyToTest(true);
+        runFadeIn();
+    }
+
+    const runFadeIn = () => {
+        if (screen) {
+            setTimeout(() => {
+                const element = document.getElementById('fade-in-element');
+                if (element) {
+                    const arr = Array.from(element.children);
+                    arr.forEach(el => {
+                        el.classList.add('fade-out');
+                    })
+                    setTimeout(() => {
+                        setTimeout(() => {
+                            element.classList.add('ready');
+                        }, 50);
+                        recursiveAddClass(0, arr);
+                    }, 1000)
+                }
+            }, 1);
+        }
+    }
+
+    const recursiveAddClass = (i: number, el: any[]) => {
+        setTimeout(() => {
+            if (i < el.length) {
+                el[i].classList.add('fade-in');
+                i++;
+                recursiveAddClass(i, el);
+            } else {
+                const replies = document.getElementById('replies-section');
+                replies?.classList.add('ready');
+            }
+        }, i * 500)
     }
 
 
@@ -220,9 +228,12 @@ const TestScreen: React.FC<TestProps> = ({ activeProject }) => {
                     </div>
                 ))}
                 {screen && <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
-                    <ScreenContent>
-                        <TypeAnimation key={screen.text} cursor={false} sequence={[screen.text]} style={{ width: '300px', background: 'transparent' }} wrapper='div' speed={50} />
-                        <ReplySection>
+                    <ScreenContent key={screen.id}>
+                        <TextWrapper id='fade-in-element'>
+                            {parse(DOMPurify.sanitize(screen.text, { USE_PROFILES: { html: true } }))}
+                            {/* <TypeAnimation key={screen.text} cursor={false} sequence={[screen.text]} style={{ width: '300px', background: 'transparent' }} wrapper='div' speed={80} /> */}
+                        </TextWrapper>
+                        <ReplySection id='replies-section'>
                             {replies && replies.map((reply, index) => (
                                 <ReplyButton onClick={() => handleReplyClick(reply)} key={index}>{reply.text}</ReplyButton>
                             ))}
@@ -252,10 +263,28 @@ const ScreenContent = styled.div`
   flex-direction: column;
   justify-content: space-between;
   height: 90%;
-  width: 90%;
-  background: rgba(255, 255, 255, 0.8);
+  width: 450px;
+  max-width: 450px;
+  background: transparent;
   border-radius: 10px;
   padding: 20px;
+`;
+
+const TextWrapper = styled.div`
+    height: 225px;
+    max-height: 225px;
+    opacity: 0;
+    transition: opacity .5s ease-in-out;
+    .fade-in {
+        opacity: 1 !important;
+        }
+    .fade-out { 
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+    }
+    &.ready {
+        opacity: 1;
+    }
 `;
 
 const FormContainer = styled.div`
@@ -323,6 +352,11 @@ const ReplySection = styled.div`
   justify-content: center;
   align-items: center;
   gap: 10px;
+  opacity: 0;
+    transition: opacity 1s ease-in-out;
+  &.ready {
+    opacity: 1;
+  }
 `;
 
 const ReplyButton = styled.button`

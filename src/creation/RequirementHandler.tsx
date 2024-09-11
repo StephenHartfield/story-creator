@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { Button, Typography } from '@mui/material';
-import { Option, Requirement } from './replies/RepliesCreator';
+import { Option } from './replies/RepliesCreator';
 import Select from "react-dropdown-select";
+import { Requirement } from './stores/ReplyStore';
 
 interface RequirementProps {
     currencies: Option[];
