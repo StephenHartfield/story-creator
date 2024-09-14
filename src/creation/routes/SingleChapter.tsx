@@ -81,7 +81,6 @@ const SingleChapter: React.FC = () => {
 
   const addScreenHandle = async () => {
     const newScreen: any = { text: "", chapterId: chapterId, projectId: activeProject?.id, order: screens.length + 1 };
-    console.log(newScreen);
     await addScreen(newScreen);
     const newScreens = await getScreensByChapterId(newScreen.chapterId);
     console.log(newScreens);

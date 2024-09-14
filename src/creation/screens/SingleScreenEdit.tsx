@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowDropDown, ArrowDropUp, Check, Reply, Settings } from "@mui/icons-material";
+import { ArrowDropDown, ArrowDropUp, Check, DragIndicator, Reply, Settings } from "@mui/icons-material";
 import "@rc-component/color-picker/assets/index.css";
 import { Button } from "@mui/material";
 import styled from "@emotion/styled";
@@ -13,6 +13,7 @@ import useReferenceStore, { Reference } from "../stores/ReferenceStore";
 import useScreenStore, { Screen } from "../stores/ScreenStore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
+import { Draggable } from "react-beautiful-dnd";
 
 interface Data {
   id: string;
@@ -24,13 +25,14 @@ interface Data {
 interface EditorProps {
   index: number;
   colorsToUse: string[];
+  dragHandleProps: any;
   handleAddColorsToUse: (val: string) => void;
   addImageFile?: (file: File) => void;
   reference?: Reference;
   screen?: Screen;
 }
 
-const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, handleAddColorsToUse, addImageFile, reference, screen }) => {
+const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandleProps, handleAddColorsToUse, addImageFile, reference, screen }) => {
   const [dataToUse, setDataToUse] = useState<Data>();
   const [isZipped, setIsZipped] = useState<boolean>(true);
   const [imageToUpload, setImageToUpload] = useState<File>();
@@ -73,8 +75,13 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, handleAdd
   };
 
   const deleteImageHandle = () => {
-    handleChange("imageLocal", "");
-    handleChange("image", "");
+    if (reference?.id) {
+      const refCopy = { ...reference, imageLocal: "", image: "" };
+      updateReference(refCopy);
+    } else if (screen?.id) {
+      const scrnCopy = { ...screen, imageLocal: "", image: "" };
+      updateScreen(scrnCopy);
+    }
     // removing image from storage should be done elsewhere.
   };
 
@@ -82,12 +89,19 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, handleAdd
     if (event.target.files) {
       if (addImageFile) {
         addImageFile(event.target.files[0]);
-      } else {
-        setImageToUpload(event.target.files[0]);
       }
+      setImageToUpload(event.target.files[0]);
       const imageUrl = URL.createObjectURL(event.target.files[0]);
       handleChange("imageLocal", imageUrl);
-      handleChange("image", `${activeProject?.id}/${event.target.files[0].name}`);
+      if (event.target.files) {
+        if (reference?.id) {
+          const refCopy = { ...reference, imageLocal: imageUrl, image: `${activeProject?.id}/${event.target.files[0].name}` };
+          updateReference(refCopy);
+        } else if (screen?.id) {
+          const scrnCopy = { ...screen, imageLocal: imageUrl, image: `${activeProject?.id}/${event.target.files[0].name}` };
+          updateScreen(scrnCopy);
+        }
+      }
     }
   };
 
@@ -125,6 +139,11 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, handleAdd
     return (
       <SectionGroup zipped={isZipped}>
         <HeaderWrapper>
+          {isZipped && (
+            <LeftWrapper {...dragHandleProps}>
+              <DragIndicator />
+            </LeftWrapper>
+          )}
           <TextWrapper>
             {isZipped ? (
               parse(

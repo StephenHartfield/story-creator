@@ -82,10 +82,11 @@ const useScreenStore = create<ScreenState>((set, get) => ({
     const scrns = get().screens.filter((s) => s.chapterId === chapterId);
     const screensList = await Promise.all(
       scrns.map(async (scrn) => {
-        if (scrn.image) {
+        if (scrn.image && !scrn.imageLocal) {
+          console.log(scrn);
           const fileRef = ref(storage, scrn.image);
-          const url = await getDownloadURL(fileRef);
-          return { ...scrn, imageLocal: url };
+          const url = await getDownloadURL(fileRef).catch((e) => console.error(e));
+          return { ...scrn, imageLocal: url || "" };
         } else {
           return scrn;
         }
@@ -100,7 +101,6 @@ const useScreenStore = create<ScreenState>((set, get) => ({
     const matchedScreen = get().screens.find((s) => s.id === screenId);
     if (matchedScreen) {
       const scrns = get().screens.filter((s) => s.chapterId === matchedScreen.chapterId);
-      console.log(scrns);
       scrns.forEach((s) => {
         useReplyStore.getState().initRepliesByScreenId(s.id);
       });
@@ -150,7 +150,6 @@ const useScreenStore = create<ScreenState>((set, get) => ({
   },
   updateScreen: async (scrn: Screen, save?: boolean) => {
     const updated = get().screens.map((screen) => (screen.id === scrn.id ? { ...screen, ...scrn } : screen));
-    console.log(updated);
     set((state) => ({
       ...state,
       screens: updated,

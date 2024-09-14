@@ -6,6 +6,7 @@ import styled from "@emotion/styled";
 import AddIcon from "@mui/icons-material/Add";
 import SingleScreenEdit from "../screens/SingleScreenEdit";
 import { Button } from "@mui/material";
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 
 interface ReferenceProps {
   userId: string;
@@ -16,7 +17,7 @@ const References: React.FC<ReferenceProps> = ({ userId }) => {
   const navigate = useNavigate();
   const [colorsToUse, setColorsToUse] = useState<string[]>([]);
   const { activeProject } = useProjectStore();
-  const { references, deleteReference, addReference } = useReferenceStore();
+  const { references, updateReferences, addReference } = useReferenceStore();
 
   useEffect(() => {
     if (activeProject) {
@@ -69,25 +70,52 @@ const References: React.FC<ReferenceProps> = ({ userId }) => {
     setIsLoading(false);
   };
 
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+    const { source, destination } = result;
+    const itemList = references.concat();
+    const [removed]: Reference[] = itemList.splice(source.index, 1);
+    itemList.splice(destination.index, 0, removed);
+    updateReferences(itemList);
+  };
+
   return (
     <>
       {activeProject ? (
         <FormContainer>
           <Title>References</Title>
           <SectionsContainer>
-            {references.length ? (
-              references.map((reference, index) => (
-                <SingleScreenEdit
-                  key={reference.id + index}
-                  reference={reference}
-                  index={index}
-                  colorsToUse={colorsToUse}
-                  handleAddColorsToUse={handleAddColorsToUse}
-                />
-              ))
-            ) : (
-              <p style={{ textAlign: "center" }}>No References Found!</p>
-            )}
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="rows">
+                {(provided: any) => (
+                  <div ref={provided.innerRef} className="rows">
+                    {references.map((reference, index) => (
+                      <Draggable key={`${reference.id}-${index}`} draggableId={`${reference.id}-${index}`} index={index}>
+                        {(provided: any) => (
+                          <div
+                            style={{
+                              userSelect: "none",
+                              ...provided.draggableProps.style,
+                            }}
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}>
+                            <SingleScreenEdit
+                              dragHandleProps={provided.dragHandleProps}
+                              key={reference.id + index}
+                              reference={reference}
+                              index={index}
+                              colorsToUse={colorsToUse}
+                              handleAddColorsToUse={handleAddColorsToUse}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           </SectionsContainer>
           <AddButton type="button" onClick={createReferenceHandle}>
             Add Reference

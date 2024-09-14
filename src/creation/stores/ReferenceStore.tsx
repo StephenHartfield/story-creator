@@ -22,6 +22,7 @@ interface ReferenceState {
   addReference: (newReference: Reference) => Promise<string>;
   getReferenceById: (id: string) => Promise<Reference | undefined>;
   updateReference: (c: Reference, save?: boolean) => Promise<void>;
+  updateReferences: (refs: Reference[]) => void;
 }
 
 const useReferenceStore = create<ReferenceState>((set, get) => ({
@@ -90,6 +91,12 @@ const useReferenceStore = create<ReferenceState>((set, get) => ({
     if (save) {
       await updateDoc(doc(db, referenceDBKey, r.id), { ...r });
     }
+  },
+  updateReferences: (updatedRefs: Reference[]) => {
+    set((state) => ({
+      ...state,
+      references: updatedRefs,
+    }));
   },
 }));
 

@@ -13,10 +13,11 @@ import { ProjectSlim } from "../stores/ProjectStore";
 import useScreenStore, { Screen, screenDBKey } from "../stores/ScreenStore";
 import ScreenTextEditor from "../screens/ScreenTextEditor";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
+import SingleScreenEdit from "../screens/SingleScreenEdit";
 
 interface FSProps {
   chapter: Chapter;
-  screens: Screen[];
+  screensL: Screen[];
   submit: (screens: Screen[], chapter: Chapter) => void;
   activeProject: ProjectSlim;
   addImageFile: (file: File) => void;
@@ -24,18 +25,14 @@ interface FSProps {
   removeScreen: (id: string) => void;
 }
 
-interface Section extends Screen {
-  isZipped: boolean;
-}
-
-const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProject, addImageFile, addScreen, removeScreen }) => {
+const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProject, addImageFile, addScreen, removeScreen }) => {
   const [title, setTitle] = useState<string>("");
   const [chImage, setChImage] = useState<string>("");
   const [chImageLocal, setChImageLocal] = useState<string>("");
-  const [sections, setSections] = useState<Section[]>([]);
+  const [sections, setSections] = useState<Screen[]>([]);
   const [colorsToUse, setColorsToUse] = useState<string[]>([]);
   const navigate = useNavigate();
-  const { updateScreen, updateScreens } = useScreenStore();
+  const { screens, getScreensByChapterId, updateScreens } = useScreenStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageClick = (e: any) => {
@@ -53,7 +50,13 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
       setChImageLocal(chapter.imageLocal);
     }
     if (screens) {
-      setSections(screens.map((s) => ({ ...s, isZipped: true })));
+      const getScreens = async () => {
+        const filtered = await getScreensByChapterId(chapter.id);
+        if (filtered) {
+          setSections(filtered);
+        }
+      };
+      getScreens();
     }
   }, [chapter, screens]);
 
@@ -93,12 +96,6 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
     }
   };
 
-  const handleSectionChange = (index: number, value: string) => {
-    const newSections = [...sections];
-    newSections[index].text = value;
-    setSections(newSections);
-  };
-
   const handleImageUpload = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       addImageFile(event.target.files[0]);
@@ -121,47 +118,19 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
     submit(sections, ch);
   };
 
-  const addReplies = (id: string) => {
-    navigate(`screens/${id}`);
-  };
-
-  const onDeleteImage = async (index: number) => {
-    const copySections = [...sections];
-    const copySingle = copySections[index];
-    copySingle.imageLocal = "";
-    copySingle.image = "";
-    await updateDoc(doc(db, screenDBKey, copySingle.id), { ...copySingle });
-    copySections[index] = copySingle;
-    setSections(copySections);
-  };
-
-  const saveScreen = (e: React.ChangeEvent<HTMLInputElement>, section: Screen) => {
-    e.preventDefault();
-    updateScreen(section, true);
-  };
-
   const onDragEnd = (result: any) => {
     if (!result.destination) return;
     const { source, destination } = result;
     const itemList = sections.concat();
-    const [removed]: Section[] = itemList.splice(source.index, 1);
+    const [removed]: Screen[] = itemList.splice(source.index, 1);
     itemList.splice(destination.index, 0, removed);
     const newScreens = itemList.map((s, idx) => ({ ...s, order: idx + 1 }));
     setSections(newScreens);
     updateScreens(newScreens);
   };
 
-  const showToggle = (e: any, section: Section, index: number) => {
-    e.preventDefault();
-    const sectionCopy = { ...section };
-    sectionCopy.isZipped = !sectionCopy.isZipped;
-    const sectionsCopy = [...sections];
-    sectionsCopy[index] = sectionCopy;
-    setSections(sectionsCopy);
-  };
-
   return (
-    <FormContainer onSubmit={handleSubmit}>
+    <FormContainer>
       <FormGroup>
         <Label htmlFor="title">Title:</Label>
         <Input type="text" id="title" value={title} onChange={handleTitleChange} />
@@ -188,86 +157,23 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
                 {sections.map((section, index) => (
                   <Draggable key={`${section.id}-${index}`} draggableId={`${section.id}-${index}`} index={index}>
                     {(provided: any) => (
-                      <SectionGroup
-                        key={section.id + index}
-                        zipped={section.isZipped}
+                      <div
                         style={{
                           userSelect: "none",
                           ...provided.draggableProps.style,
                         }}
-                        ref={provided.innerRef}>
-                        <HeaderWrapper>
-                          {section.isZipped && (
-                            <LeftWrapper {...provided.draggableProps} {...provided.dragHandleProps}>
-                              <DragIndicator />
-                            </LeftWrapper>
-                          )}
-                          <TextWrapper>
-                            {section.isZipped ? (
-                              parse(
-                                DOMPurify.sanitize(section.text, {
-                                  USE_PROFILES: { html: true },
-                                })
-                              )
-                            ) : (
-                              <h2 style={{ marginTop: "0", textAlign: "center" }}>Screen {index + 1}</h2>
-                            )}
-                          </TextWrapper>
-                          <RightWrapper>
-                            <StyledButton title="Settings" onClick={() => navigate(`/settings/screens/${section.id}`)}>
-                              <Settings />
-                            </StyledButton>
-                            <StyledButton title="Test Screen" onClick={() => navigate(`/testing/${section.id}`)}>
-                              <Check />
-                            </StyledButton>
-                            <StyledButton title="Edit Replies" onClick={() => addReplies(section.id)}>
-                              <Reply />
-                            </StyledButton>
-                            <StyledButton title="Open Screen" onClick={(e: any) => showToggle(e, section, index)}>
-                              {!section.isZipped ? <ArrowDropUp /> : <ArrowDropDown />}
-                            </StyledButton>
-                          </RightWrapper>
-                        </HeaderWrapper>
-
-                        <BodyWrapper zipped={section.isZipped}>
-                          <ScreenTextEditor
-                            value={section.text}
-                            activeProject={activeProject}
-                            colorsToUse={colorsToUse}
-                            addColor={(val: string) => handleAddColorsToUse(val)}
-                            handleChange={(val: string) => handleSectionChange(index, val)}
-                          />
-                          <ActionButtons>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleImageUpload(index, e)}
-                              style={{ display: "none" }}
-                              id={`upload-${index}`}
-                            />
-                            <ActionButton as="label" htmlFor={`upload-${index}`}>
-                              Add Image
-                            </ActionButton>
-                            <ActionButton type="button">Add Sound</ActionButton>
-                            <RemoveButton type="button" onClick={() => removeScreen(section.id)}>
-                              <DeleteIcon />
-                            </RemoveButton>
-                            <ActionButton isSave={true} onClick={(e: any) => saveScreen(e, section)}>
-                              SAVE
-                            </ActionButton>
-                          </ActionButtons>
-                          <ImageList>
-                            {section.imageLocal && (
-                              <ImageContainer>
-                                <StyledImg src={section.imageLocal} alt={`Section ${index + 1} Image`} />
-                                <DeleteButton onClick={() => onDeleteImage(index)}>
-                                  <DeleteIcon />
-                                </DeleteButton>
-                              </ImageContainer>
-                            )}
-                          </ImageList>
-                        </BodyWrapper>
-                      </SectionGroup>
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}>
+                        <SingleScreenEdit
+                          key={`${section.id}-${index}`}
+                          dragHandleProps={provided.dragHandleProps}
+                          screen={section}
+                          index={index}
+                          colorsToUse={colorsToUse}
+                          handleAddColorsToUse={handleAddColorsToUse}
+                          addImageFile={addImageFile}
+                        />
+                      </div>
                     )}
                   </Draggable>
                 ))}
@@ -281,14 +187,14 @@ const FormSections: React.FC<FSProps> = ({ chapter, screens, submit, activeProje
         </AddButton>
       </SectionsContainer>
 
-      <SubmitButton type="submit">Submit</SubmitButton>
+      <SubmitButton onClick={handleSubmit}>Submit</SubmitButton>
     </FormContainer>
   );
 };
 
 export default FormSections;
 
-const FormContainer = styled.form`
+const FormContainer = styled.div`
   max-width: 800px;
   width: 700px;
   margin: 0 auto;
