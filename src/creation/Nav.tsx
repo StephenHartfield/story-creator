@@ -1,23 +1,24 @@
-import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import React, { useEffect, useState } from 'react';
-import styled from 'styled-components';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
-import Breadcrumbs from './Breadcrumbs';
-import Chapters from './routes/Chapters';
-import Auth from './routes/Auth';
-import SingleChapter from './routes/SingleChapter';
-import SingleScreen from './routes/SingleScreen';
-import CurrencyManager from './routes/CurrencyManager';
-import TestScreen from './routes/TestSingleScreen';
-import Settings from './routes/Settings';
-import useProjectStore from './stores/ProjectStore';
-import Projects from './routes/Projects';
+import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from "react-router-dom";
+import Breadcrumbs from "./Breadcrumbs";
+import Chapters from "./routes/Chapters";
+import Auth from "./routes/Auth";
+import SingleChapter from "./routes/SingleChapter";
+import SingleScreen from "./routes/SingleScreen";
+import CurrencyManager from "./routes/CurrencyManager";
+import TestScreen from "./routes/TestSingleScreen";
+import Settings from "./routes/Settings";
+import useProjectStore from "./stores/ProjectStore";
+import Projects from "./routes/Projects";
+import References from "./routes/References";
 
 interface NavProps {
   user: any;
 }
 
-const Nav: React.FC<NavProps> = ({user}) => {
+const Nav: React.FC<NavProps> = ({ user }) => {
   const [isAssetsOpen, setIsAssetsOpen] = useState(false);
   const [isAddOnsOpen, setIsAddOnsOpen] = useState(false);
   const { activeProject } = useProjectStore();
@@ -33,17 +34,17 @@ const Nav: React.FC<NavProps> = ({user}) => {
   return (
     <Container>
       <Router>
-
         <LeftSidebar>
           <LogoWrapper>
-            <LogoMock><span style={{ display: 'block' }}>Story</span>Creator</LogoMock>
+            <LogoMock>
+              <span style={{ display: "block" }}>Story</span>Creator
+            </LogoMock>
           </LogoWrapper>
           <SidebarButton to="/projects">Projects</SidebarButton>
           <SidebarButton to="/chapters">Chapters</SidebarButton>
-          <SidebarButton to="/transitions">Transitions</SidebarButton>
+          <SidebarButton to="/references">References</SidebarButton>
           <SidebarButton to="/loops">Loops</SidebarButton>
         </LeftSidebar>
-
 
         <TopNav>
           <NavButton onClick={toggleAssets}>Assets {isAssetsOpen ? <ExpandLess /> : <ExpandMore />}</NavButton>
@@ -57,7 +58,9 @@ const Nav: React.FC<NavProps> = ({user}) => {
           <NavButton onClick={toggleAddOns}>AddOns {isAddOnsOpen ? <ExpandLess /> : <ExpandMore />}</NavButton>
           {isAddOnsOpen && (
             <Dropdown $addons>
-              <DropdownItem $gold onClick={() => setIsAddOnsOpen(false)} to="/currency">Currencies</DropdownItem>
+              <DropdownItem $gold onClick={() => setIsAddOnsOpen(false)} to="/currency">
+                Currencies
+              </DropdownItem>
               <DropdownItem to="/">Items</DropdownItem>
               <DropdownItem to="/">Enemies</DropdownItem>
             </Dropdown>
@@ -65,7 +68,7 @@ const Nav: React.FC<NavProps> = ({user}) => {
 
           <NavButton>Settings</NavButton>
           {activeProject ? <AProject>{activeProject?.title}</AProject> : <AProject>NO PROJECT</AProject>}
-          <LoginButton to="/login">{user && user.email ? 'LOG OUT' : 'LOG IN'}</LoginButton>
+          <LoginButton to="/login">{user && user.email ? "LOG OUT" : "LOG IN"}</LoginButton>
         </TopNav>
 
         {/* <Breadcrumbs /> */}
@@ -73,15 +76,19 @@ const Nav: React.FC<NavProps> = ({user}) => {
         <Content>
           <Base>
             <Routes>
-              <Route path="/projects" element={<Projects userId={user?.uid}/>} />
-              <Route path="/chapters" element={<Chapters userId={user?.uid} />} />
-              <Route path='/chapters/:chapterId' element={<SingleChapter />} />
-              <Route path='/chapters/:chapterId/screens/:screenId' element={<SingleScreen />} />
-              <Route path='/testing/:screenId' element={<TestScreen />} />
-              <Route path="/currency" element={<CurrencyManager />} />
-              <Route path="/settings/screens/:screenId" element={<Settings />} />
-              <Route path="/settings/chapters/:chapterId" element={<Settings />} />
-              <Route path="/login" element={<Auth />} />
+              <Route path="/">
+                <Route index element={<Navigate to="projects" replace />} />
+                <Route path="projects" element={<Projects userId={user?.uid} />} />
+                <Route path="chapters" element={<Chapters userId={user?.uid} />} />
+                <Route path="chapters/:chapterId" element={<SingleChapter />} />
+                <Route path="chapters/:chapterId/screens/:screenId" element={<SingleScreen />} />
+                <Route path="testing/:screenId" element={<TestScreen />} />
+                <Route path="currency" element={<CurrencyManager />} />
+                <Route path="settings/screens/:screenId" element={<Settings />} />
+                <Route path="settings/chapters/:chapterId" element={<Settings />} />
+                <Route path="references" element={<References userId={user?.uid} />} />
+                <Route path="login" element={<Auth />} />
+              </Route>
             </Routes>
           </Base>
         </Content>
@@ -95,26 +102,26 @@ export default Nav;
 // Styled components
 
 const LogoWrapper = styled.div`
-    background-color: white;
-    border-top-left-radius: 20px;
-    border-bottom-right-radius: 30px;
-    border-color: lightgreen;
-    border-width: 2px;
-    border-style: solid;
-    width: 130px;
-    padding-right: 10px;
-    margin: 0 auto;
+  background-color: white;
+  border-top-left-radius: 20px;
+  border-bottom-right-radius: 30px;
+  border-color: lightgreen;
+  border-width: 2px;
+  border-style: solid;
+  width: 130px;
+  padding-right: 10px;
+  margin: 0 auto;
 `;
 const LogoMock = styled.h1`
-    color: purple;
-    text-align: center;
-    font-size: 30px;
-    line-height: 32px;
-    margin-bottom: 5px;
-    margin-top: 5px;
-    span {
-      color: coral;
-    }
+  color: purple;
+  text-align: center;
+  font-size: 30px;
+  line-height: 32px;
+  margin-bottom: 5px;
+  margin-top: 5px;
+  span {
+    color: coral;
+  }
 `;
 
 const Container = styled.div`
@@ -206,10 +213,10 @@ const LoginButton = styled(Link)`
   }
 `;
 
-const Dropdown = styled.div <{ $addons?: boolean }>`
+const Dropdown = styled.div<{ $addons?: boolean }>`
   position: absolute;
   top: 60px;
-  left: ${props => props.$addons && '150px'};
+  left: ${(props) => props.$addons && "150px"};
   background-color: coral;
   border-radius: 5px;
   padding: 10px;
@@ -218,18 +225,18 @@ const Dropdown = styled.div <{ $addons?: boolean }>`
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 `;
 
-const DropdownItem = styled(Link)<{$gold?:boolean}>`
+const DropdownItem = styled(Link)<{ $gold?: boolean }>`
   padding: 10px;
-  color: ${props => props.$gold ? 'purple' : 'white'};
+  color: ${(props) => (props.$gold ? "purple" : "white")};
   text-decoration: none;
   font-size: 14px;
   border-radius: 5px;
   cursor: pointer;
-  background-color: ${props => props.$gold ? '#FFD700' : 'transparent'};
+  background-color: ${(props) => (props.$gold ? "#FFD700" : "transparent")};
 
   &:hover {
-    background-color: ${props => props.$gold ? 'purple' : 'lightgreen'};
-    color: ${props => props.$gold ? '#FFD700' : 'black'};
+    background-color: ${(props) => (props.$gold ? "purple" : "lightgreen")};
+    color: ${(props) => (props.$gold ? "#FFD700" : "black")};
   }
 `;
 
@@ -250,10 +257,10 @@ const Content = styled.div`
 `;
 
 const Base = styled.div`
-    max-width: 100%;
-    width: 80%;
-    padding: 20px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  max-width: 100%;
+  width: 80%;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;

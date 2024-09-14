@@ -1,46 +1,36 @@
-import React, { useState } from 'react';
-import styled from '@emotion/styled';
-import DeleteIcon from '@mui/icons-material/Delete';
-import useProjectStore from '../stores/ProjectStore';
-import useCurrencyStore from '../stores/CurrencyStore';
+import React, { useState } from "react";
+import styled from "@emotion/styled";
+import DeleteIcon from "@mui/icons-material/Delete";
+import useProjectStore from "../stores/ProjectStore";
+import useCurrencyStore from "../stores/CurrencyStore";
 
 const CurrencyManager: React.FC = () => {
-  const [displayName, setDisplayName] = useState('');
-  const [keyWord, setKeyWord] = useState('');
-  const [startingValue, setStartingValue] = useState<number | ''>('');
-  const {activeProject} = useProjectStore();
-  const {currencies, addCurrency, deleteCurrency} = useCurrencyStore();
+  const [displayName, setDisplayName] = useState("");
+  const [keyWord, setKeyWord] = useState("");
+  const [startingValue, setStartingValue] = useState<number | "">("");
+  const { activeProject } = useProjectStore();
+  const { currencies, addCurrency, deleteCurrency } = useCurrencyStore();
 
-  const addCurrencyHandle = async() => {
-    if (displayName && keyWord && startingValue !== '') {
+  const addCurrencyHandle = async () => {
+    if (displayName && keyWord && startingValue !== "") {
       const newCurrency = { displayName, keyWord, startingValue: Number(startingValue), projectId: activeProject?.id };
       addCurrency(newCurrency);
-      setDisplayName('');
-      setKeyWord('');
-      setStartingValue('');
+      setDisplayName("");
+      setKeyWord("");
+      setStartingValue("");
     }
   };
 
   return (
     <Container>
       <Form>
-        <Input
-          type="text"
-          placeholder="Display Name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        <Input
-          type="text"
-          placeholder="Key Word"
-          value={keyWord}
-          onChange={(e) => setKeyWord(e.target.value)}
-        />
+        <Input type="text" placeholder="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        <Input type="text" placeholder="Key Word" value={keyWord} onChange={(e) => setKeyWord(e.target.value)} />
         <Input
           type="number"
           placeholder="Starting Value"
           value={startingValue}
-          onChange={(e) => setStartingValue(e.target.value === '' ? '' : Number(e.target.value))}
+          onChange={(e) => setStartingValue(e.target.value === "" ? "" : Number(e.target.value))}
         />
         <AddButton onClick={addCurrencyHandle}>Add Currency</AddButton>
       </Form>
@@ -83,7 +73,7 @@ const Input = styled.input`
 
 const AddButton = styled.button`
   padding: 10px;
-  background-color: #FFD700;
+  background-color: #ffd700;
   color: purple;
   border: 2px solid purple;
   border-radius: 4px;
@@ -92,8 +82,8 @@ const AddButton = styled.button`
 
   &:hover {
     background-color: purple;
-    color: #FFD700;
-    border-color: #FFD700;
+    color: #ffd700;
+    border-color: #ffd700;
   }
 `;
 

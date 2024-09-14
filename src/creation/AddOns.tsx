@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
-import {
-  List,
-  ListItem,
-  ListItemText,
-  Collapse,
-  Button,
-  IconButton,
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
-import styled from '@emotion/styled';
+import React, { useState } from "react";
+import { List, ListItem, ListItemText, Collapse, Button, IconButton } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ExpandLess from "@mui/icons-material/ExpandLess";
+import ExpandMore from "@mui/icons-material/ExpandMore";
+import styled from "@emotion/styled";
 
 // Define the structure of currencies, items, and enemies
 interface Currency {
@@ -34,18 +27,18 @@ interface Enemy {
 const AddOns: React.FC = () => {
   // State for lists of currencies, items, and enemies
   const [currencies, setCurrencies] = useState<Currency[]>([
-    { name: 'Gold', amount: 100 },
-    { name: 'Silver', amount: 500 },
+    { name: "Gold", amount: 100 },
+    { name: "Silver", amount: 500 },
   ]);
 
   const [items, setItems] = useState<Item[]>([
-    { name: 'Sword', inPossession: true },
-    { name: 'Shield', inPossession: false },
+    { name: "Sword", inPossession: true },
+    { name: "Shield", inPossession: false },
   ]);
 
   const [enemies, setEnemies] = useState<Enemy[]>([
-    { name: 'Goblin', health: 100, damage: 10, weakness: 'Fire', phrases: ['Grunt', 'Screech'] },
-    { name: 'Dragon', health: 1000, damage: 200, weakness: 'Ice', phrases: ['Roar', 'Breathes Fire'] },
+    { name: "Goblin", health: 100, damage: 10, weakness: "Fire", phrases: ["Grunt", "Screech"] },
+    { name: "Dragon", health: 1000, damage: 200, weakness: "Ice", phrases: ["Roar", "Breathes Fire"] },
   ]);
 
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -65,15 +58,15 @@ const AddOns: React.FC = () => {
   const toggleMenu = () => setMenuOpen(!menuOpen);
 
   // Toggle the dropdown for each section
-  const toggleDropdown = (type: 'currencies' | 'items' | 'enemies') => {
+  const toggleDropdown = (type: "currencies" | "items" | "enemies") => {
     switch (type) {
-      case 'currencies':
+      case "currencies":
         setCurrenciesOpen(!currenciesOpen);
         break;
-      case 'items':
+      case "items":
         setItemsOpen(!itemsOpen);
         break;
-      case 'enemies':
+      case "enemies":
         setEnemiesOpen(!enemiesOpen);
         break;
       default:
@@ -81,15 +74,9 @@ const AddOns: React.FC = () => {
     }
   };
 
-    const addNewCurrency = () => {
-
-    }
-    const addNewItem = () => {
-
-    }
-    const addNewEnemy = () => {
-
-    }
+  const addNewCurrency = () => {};
+  const addNewItem = () => {};
+  const addNewEnemy = () => {};
 
   return (
     <AddOnsContainer>
@@ -103,7 +90,7 @@ const AddOns: React.FC = () => {
         <ListContainer>
           <List>
             {/* Currencies Dropdown */}
-            <ListItem button onClick={() => toggleDropdown('currencies')}>
+            <ListItem button onClick={() => toggleDropdown("currencies")}>
               <ListItemText primary="Currencies" />
               {currenciesOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItem>
@@ -119,7 +106,7 @@ const AddOns: React.FC = () => {
             </Collapse>
 
             {/* Items Dropdown */}
-            <ListItem button onClick={() => toggleDropdown('items')}>
+            <ListItem button onClick={() => toggleDropdown("items")}>
               <ListItemText primary="Items" />
               {itemsOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItem>
@@ -135,7 +122,7 @@ const AddOns: React.FC = () => {
             </Collapse>
 
             {/* Enemies Dropdown */}
-            <ListItem button onClick={() => toggleDropdown('enemies')}>
+            <ListItem button onClick={() => toggleDropdown("enemies")}>
               <ListItemText primary="Enemies" />
               {enemiesOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItem>

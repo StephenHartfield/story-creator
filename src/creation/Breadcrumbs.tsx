@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import styled from 'styled-components';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import styled from "styled-components";
 
 interface BreadcrumbsProps {
   chapterTitle?: string; // Pass chapter title as a prop
@@ -8,42 +8,40 @@ interface BreadcrumbsProps {
 
 const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ chapterTitle }) => {
   const location = useLocation();
-  const pathnames = location.pathname.split('/').filter((x) => x);
+  const pathnames = location.pathname.split("/").filter((x) => x);
 
   // Map paths to breadcrumb names
   const breadcrumbNameMap: { [key: string]: string } = {
-    parts: 'Parts',
-    chapters: 'Chapters',
-    pages: 'Pages',
-    replies: 'Replies',
-    transitions: 'Transitions',
-    loops: 'Loops',
-    assets: 'Assets',
-    images: 'Images',
-    sounds: 'Sounds',
-    addons: 'AddOns',
-    currencies: 'Currencies',
-    items: 'Items',
-    enemies: 'Enemies',
-    settings: 'Settings',
+    parts: "Parts",
+    chapters: "Chapters",
+    pages: "Pages",
+    replies: "Replies",
+    transitions: "Transitions",
+    loops: "Loops",
+    assets: "Assets",
+    images: "Images",
+    sounds: "Sounds",
+    addons: "AddOns",
+    currencies: "Currencies",
+    items: "Items",
+    enemies: "Enemies",
+    settings: "Settings",
   };
 
   return (
     <BreadcrumbWrapper>
       <BreadcrumbLink to="/">Home</BreadcrumbLink>
       {pathnames.map((value, index) => {
-        const to = `/${pathnames.slice(0, index + 1).join('/')}`;
+        const to = `/${pathnames.slice(0, index + 1).join("/")}`;
         const isLast = index === pathnames.length - 1;
 
         // Special case: Display chapter title if on a chapter page
-        if (value === 'chapters' && isLast && chapterTitle) {
+        if (value === "chapters" && isLast && chapterTitle) {
           return <BreadcrumbItem key={to}>{chapterTitle}</BreadcrumbItem>;
         }
 
         return isLast ? (
-          <BreadcrumbItem key={to}>
-            {breadcrumbNameMap[value] || value}
-          </BreadcrumbItem>
+          <BreadcrumbItem key={to}>{breadcrumbNameMap[value] || value}</BreadcrumbItem>
         ) : (
           <BreadcrumbLink key={to} to={to}>
             {breadcrumbNameMap[value] || value}

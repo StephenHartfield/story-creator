@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, TextField, Grid, Box, Typography } from "@mui/material";
-import RequirementHandler from '../RequirementHandler';
+import RequirementHandler from "../RequirementHandler";
 import { Option } from "./RepliesCreator";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
@@ -20,23 +20,23 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
 
   useEffect(() => {
     if (props.reply.linkToSectionId) {
-      getSectionLinkedTo(props.reply.linkToSectionId)
+      getSectionLinkedTo(props.reply.linkToSectionId);
     }
   }, [props.reply.linkToSectionId]);
 
-  const getSectionLinkedTo = async(screenId: string) => {
+  const getSectionLinkedTo = async (screenId: string) => {
     try {
       const screenRef = doc(db, screenDBKey, screenId);
       const screenSnap = await getDoc(screenRef);
-  
+
       if (screenSnap.exists()) {
-          const screenData = { id: screenSnap.id, ...screenSnap.data() } as Screen;
-          setLinkedScreen(screenData);
+        const screenData = { id: screenSnap.id, ...screenSnap.data() } as Screen;
+        setLinkedScreen(screenData);
       }
     } catch (e) {
       console.error(e);
     }
-  }
+  };
 
   const handleTextChange = (text: string) => {
     const replyCopy = { ...props.reply };
@@ -46,7 +46,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
 
   const updateRequirement = (requirement: Requirement) => {
     const replyCopy = { ...props.reply };
-    if (requirement.addedAs === 'requirement') {
+    if (requirement.addedAs === "requirement") {
       replyCopy.requirements.push(requirement);
     } else {
       replyCopy.effects.push(requirement);
@@ -59,14 +59,13 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
       sx={{
         p: 3,
         mb: 3,
-        width: '650px',
-        maxWidth: '650px',
+        width: "650px",
+        maxWidth: "650px",
         border: "2px solid #0066cc",
         borderRadius: "12px",
         backgroundColor: "#e6f7ff",
-        margin: '20px auto'
-      }}
-    >
+        margin: "20px auto",
+      }}>
       <Grid container spacing={3} alignItems="center">
         <Grid item xs={12}>
           <TextField
@@ -80,16 +79,16 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             sx={{
               backgroundColor: "#ffffff", // white background for text field
               borderColor: "#0066cc",
-              borderRadius: '8px',
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: '#0066cc', // blue border for the input field
+              borderRadius: "8px",
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "#0066cc", // blue border for the input field
                 },
-                '&:hover fieldset': {
-                  borderColor: '#004080', // darker blue border on hover
+                "&:hover fieldset": {
+                  borderColor: "#004080", // darker blue border on hover
                 },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#004080', // even darker blue when focused
+                "&.Mui-focused fieldset": {
+                  borderColor: "#004080", // even darker blue when focused
                 },
               },
             }}
@@ -104,11 +103,10 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
             sx={{
               backgroundColor: "#3399ff", // light blue button
               color: "#fff",
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: "#0073e6", // darker blue on hover
               },
-            }}
-          >
+            }}>
             Links To
           </Button>
           {props.reply.linkToSectionId && (
@@ -126,10 +124,20 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
       <Box mt={3}>
         {props.reply?.requirements?.length > 0 && (
           <Box mb={1}>
-            <Typography variant="subtitle1" sx={{ color: "#004080" }}>Requirements:</Typography>
+            <Typography variant="subtitle1" sx={{ color: "#004080" }}>
+              Requirements:
+            </Typography>
             {props.reply.requirements.map((req, index) => (
               <Typography key={`requirement${index}`} variant="body2" sx={{ color: "#333" }}>
-                Required to have {req.type === 'item' ? (req.value ? 'in your possession' : 'not in your possession') : (typeof req.greaterThan !== 'undefined' && req.greaterThan ? 'greater than ' + req.value : 'less than ' + req.value)} {req.keyWord}
+                Required to have{" "}
+                {req.type === "item"
+                  ? req.value
+                    ? "in your possession"
+                    : "not in your possession"
+                  : typeof req.greaterThan !== "undefined" && req.greaterThan
+                  ? "greater than " + req.value
+                  : "less than " + req.value}{" "}
+                {req.keyWord}
               </Typography>
             ))}
           </Box>
@@ -137,10 +145,13 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
 
         {props.reply?.effects?.length > 0 && (
           <Box>
-            <Typography variant="subtitle1" sx={{ color: "#004080" }}>Effects:</Typography>
+            <Typography variant="subtitle1" sx={{ color: "#004080" }}>
+              Effects:
+            </Typography>
             {props.reply.effects.map((ef, index) => (
               <Typography key={`effect${index}`} variant="body2" sx={{ color: "#333" }}>
-                Causes user to {ef.value && typeof ef.value === 'number' ? (ef.value > 0 ? 'Gain' : 'Lose') : (ef.value ? 'Gain' : 'Lose')} {ef.type === 'currency' && ef.value} {ef.keyWord}
+                Causes user to {ef.value && typeof ef.value === "number" ? (ef.value > 0 ? "Gain" : "Lose") : ef.value ? "Gain" : "Lose"}{" "}
+                {ef.type === "currency" && ef.value} {ef.keyWord}
               </Typography>
             ))}
           </Box>

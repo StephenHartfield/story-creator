@@ -1,259 +1,259 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import styled from '@emotion/styled';
-import { TypeAnimation } from 'react-type-animation';
-import parse from 'html-react-parser';
-import DOMPurify from 'dompurify';
-import Loading from '../../Loading';
-import useProjectStore from '../stores/ProjectStore';
-import useScreenStore, { Screen } from '../stores/ScreenStore';
-import useSettingStore, { Setting } from '../stores/SettingsStore';
-import useCurrencyStore, { Currency } from '../stores/CurrencyStore';
-import useReplyStore, { Reply } from '../stores/ReplyStore';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import styled from "@emotion/styled";
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
+import Loading from "../../Loading";
+import useProjectStore from "../stores/ProjectStore";
+import useScreenStore, { Screen } from "../stores/ScreenStore";
+import useSettingStore, { Setting } from "../stores/SettingsStore";
+import useCurrencyStore, { Currency } from "../stores/CurrencyStore";
+import useReplyStore, { Reply } from "../stores/ReplyStore";
 
 export interface UserCurrency {
-    currency: Currency;
-    userValue: number;
+  currency: Currency;
+  userValue: number;
 }
 
 const TestScreen: React.FC = () => {
-    const { screenId } = useParams<{ screenId: string }>();
-    const [screen, setScreen] = useState<Screen | null>(null);
-    const [replies, setReplies] = useState<Reply[] | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [defaultBg, setDefaultBg] = useState<string>();
-    const [settings, setSettings] = useState<Setting>();
-    const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
-    const [readyToTest, setReadyToTest] = useState<boolean>(false);
-    const [display, setDisplay] = useState<any>();
-    const navigate = useNavigate();
-    const { activeProject } = useProjectStore();
-    const { getScreenById } = useScreenStore();
-    const { getSettingByScreenId, getSettingByChapterId } = useSettingStore()
-    const { currencies } = useCurrencyStore();
-    const { getRepliesByScreenId } = useReplyStore();
+  const { screenId } = useParams<{ screenId: string }>();
+  const [screen, setScreen] = useState<Screen | null>(null);
+  const [replies, setReplies] = useState<Reply[] | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [defaultBg, setDefaultBg] = useState<string>();
+  const [settings, setSettings] = useState<Setting>();
+  const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
+  const [readyToTest, setReadyToTest] = useState<boolean>(false);
+  const [display, setDisplay] = useState<any>();
+  const navigate = useNavigate();
+  const { activeProject } = useProjectStore();
+  const { getScreenById } = useScreenStore();
+  const { getSettingByScreenId, getSettingByChapterId } = useSettingStore();
+  const { currencies } = useCurrencyStore();
+  const { getRepliesByScreenId } = useReplyStore();
 
-    useEffect(() => {
-        const fetchScreen = async () => {
-            setIsLoading(true);
-            if (screenId) {
-                const screen = await getScreenById(screenId);
-                if (screen) {
-                    const setts = fetchSettings(screen);
-                    if (setts && !screen.imageLocal) {
-                        setDefaultBg(setts.defaultBackground);
-                    }
-                    setScreen(screen);
-                    runFadeIn();
-                    const repliesList = await getRepliesByScreenId(screen.id);
-                    if (repliesList.length) {
-                        const sorted = repliesList.sort((a, b) => a.order - b.order);
-                        setReplies(sorted);
-                    } else {
-                        setReplies([{ text: 'Continue', linkToSectionId: screen.linkToNextScreen, id: '', order: 1, screenId: '', requirements: [], effects: [] }]);
-                    }
-                    setIsLoading(false);
-                } else {
-                    console.error('Screen not found');
-                    setIsLoading(false);
-                }
-            }
-        };
-        if (activeProject && !readyToTest) {
-            initializeTest();
-        }
-        fetchScreen();
-    }, [screenId, activeProject]);
-
-    useEffect(() => {
-        if (replies && replies.length && userCurrencies.length) {
-            //hide if requirement not met
-            const indexesToRemove: number[] = [];
-            replies.forEach((r, i) => {
-                if (r.requirements.length) {
-                    r.requirements.forEach(req => {
-                        if (req.type === 'currency') {
-                            const currencyToCheck = userCurrencies.find(uc => uc.currency.keyWord === req.keyWord);
-                            if (currencyToCheck) {
-                                if (req.greaterThan && currencyToCheck.userValue <= (req.value as number)) {
-                                    indexesToRemove.push(i);
-                                } else if (!req.greaterThan && currencyToCheck.userValue >= (req.value as number)) {
-                                    indexesToRemove.push(i);
-                                }
-                            } else {
-                                indexesToRemove.push(i);
-                            }
-                        }
-                    })
-                }
-            })
-            const repCopy = [...replies];
-            const replyFiltered = repCopy.filter((_, idx) => !indexesToRemove.includes(idx));
-            setReplies(replyFiltered);
-        }
-    }, [userCurrencies, isLoading]);
-
-    const initializeTest = async () => {
-        const userCurrencies = currencies.map(curr => ({ currency: curr, userValue: curr.startingValue || 0 }));
-        setUserCurrencies(userCurrencies);
-    }
-
-    const fetchSettings = (scrn: Screen): Setting | null => {
-        try {
-            const sSetting = getSettingByScreenId(scrn.id);
-            if (sSetting) {
-                setSettings(sSetting);
-                return sSetting;
-            } else {
-                const cSetting = getSettingByChapterId(scrn.chapterId);
-                if (cSetting) {
-                    setSettings(cSetting);
-                    return cSetting;
-                } else {
-                    setSettings(undefined);
-                }
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        return null;
-    }
-
-    const handleReplyClick = (reply: Reply) => {
-        if (reply.effects.length > 0) {
-            const userCurrenciesCopy = [...userCurrencies];
-            reply.effects.forEach(e => {
-                if (e.type === 'currency') {
-                    let matchedI = 0;
-                    const currencyToChange = userCurrenciesCopy.find((uc, idx) => {
-                        if (uc.currency.keyWord === e.keyWord) {
-                            matchedI = idx;
-                            return uc;
-                        }
-                    })
-                    if (currencyToChange) {
-                        currencyToChange.userValue += e.value as number;
-                        userCurrenciesCopy[matchedI] = currencyToChange;
-                        setUserCurrencies(userCurrenciesCopy);
-                    }
-                }
-            })
-        }
-        navigate(`/testing/${reply.linkToSectionId}`);
-    }
-
-    const handleUserCurrency = (key: string, val: any) => {
-        if (val === '' || (!isNaN(val) && !isNaN(parseFloat(val)))) {
-            const userCopy = [...userCurrencies];
-            let matchedi = 0;
-            const match = userCopy.find((uc, idx) => {
-                if (uc.currency.keyWord === key) {
-                    matchedi = idx;
-                    return uc;
-                }
-            });
-            if (match) {
-                match.userValue = parseInt(val);
-                userCopy[matchedi] = match;
-            }
-            setUserCurrencies(userCopy);
-        } else {
-            console.error('not a number!');
-        }
-    }
-
-    const startTest = () => {
-        setReadyToTest(true);
-        runFadeIn();
-    }
-
-    const runFadeIn = () => {
+  useEffect(() => {
+    const fetchScreen = async () => {
+      setIsLoading(true);
+      if (screenId) {
+        const screen = await getScreenById(screenId);
         if (screen) {
-            setTimeout(() => {
-                const element = document.getElementById('fade-in-element');
-                if (element) {
-                    const arr = Array.from(element.children);
-                    arr.forEach(el => {
-                        el.classList.add('fade-out');
-                    })
-                    setTimeout(() => {
-                        setTimeout(() => {
-                            element.classList.add('ready');
-                        }, 50);
-                        recursiveAddClass(0, arr);
-                    }, 1000)
-                }
-            }, 1);
+          const setts = fetchSettings(screen);
+          if (setts && !screen.imageLocal) {
+            setDefaultBg(setts.defaultBackground);
+          }
+          setScreen(screen);
+          runFadeIn();
+          const repliesList = await getRepliesByScreenId(screen.id);
+          if (repliesList.length) {
+            const sorted = repliesList.sort((a, b) => a.order - b.order);
+            setReplies(sorted);
+          } else {
+            setReplies([{ text: "Continue", linkToSectionId: screen.linkToNextScreen, id: "", order: 1, screenId: "", requirements: [], effects: [] }]);
+          }
+          setIsLoading(false);
+        } else {
+          console.error("Screen not found");
+          setIsLoading(false);
         }
+      }
+    };
+    if (activeProject && !readyToTest) {
+      initializeTest();
     }
+    fetchScreen();
+  }, [screenId, activeProject]);
 
-    const recursiveAddClass = (i: number, el: any[]) => {
-        setTimeout(() => {
-            if (i < el.length) {
-                el[i].classList.add('fade-in');
-                i++;
-                recursiveAddClass(i, el);
-            } else {
-                const replies = document.getElementById('replies-section');
-                replies?.classList.add('ready');
+  useEffect(() => {
+    if (replies && replies.length && userCurrencies.length) {
+      //hide if requirement not met
+      const indexesToRemove: number[] = [];
+      replies.forEach((r, i) => {
+        if (r.requirements.length) {
+          r.requirements.forEach((req) => {
+            if (req.type === "currency") {
+              const currencyToCheck = userCurrencies.find((uc) => uc.currency.keyWord === req.keyWord);
+              if (currencyToCheck) {
+                if (req.greaterThan && currencyToCheck.userValue <= (req.value as number)) {
+                  indexesToRemove.push(i);
+                } else if (!req.greaterThan && currencyToCheck.userValue >= (req.value as number)) {
+                  indexesToRemove.push(i);
+                }
+              } else {
+                indexesToRemove.push(i);
+              }
             }
-        }, i * 500)
+          });
+        }
+      });
+      const repCopy = [...replies];
+      const replyFiltered = repCopy.filter((_, idx) => !indexesToRemove.includes(idx));
+      setReplies(replyFiltered);
     }
+  }, [userCurrencies, isLoading]);
 
+  const initializeTest = async () => {
+    const userCurrencies = currencies.map((curr) => ({ currency: curr, userValue: curr.startingValue || 0 }));
+    setUserCurrencies(userCurrencies);
+  };
 
-    if (!readyToTest) {
-        return (
-            <FormContainer>
-                <FormTitle>User Starts With</FormTitle>
-                {userCurrencies.map((curr, index) => (
-                    <CurrencyRow key={'curr' + index}>
-                        <CurrencyLabel>{curr.currency.displayName}</CurrencyLabel>
-                        <CurrencyInput
-                            type="number"
-                            value={curr.userValue}
-                            onChange={(e) => handleUserCurrency(curr.currency.keyWord, e.target.value)}
-                        />
-                    </CurrencyRow>
-                ))}
-                <SubmitButton onClick={startTest}>Start Test</SubmitButton>
-            </FormContainer>
-        )
+  const fetchSettings = (scrn: Screen): Setting | null => {
+    try {
+      const sSetting = getSettingByScreenId(scrn.id);
+      if (sSetting) {
+        setSettings(sSetting);
+        return sSetting;
+      } else {
+        const cSetting = getSettingByChapterId(scrn.chapterId);
+        if (cSetting) {
+          setSettings(cSetting);
+          return cSetting;
+        } else {
+          setSettings(undefined);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  };
+
+  const handleReplyClick = (reply: Reply) => {
+    if (reply.effects.length > 0) {
+      const userCurrenciesCopy = [...userCurrencies];
+      reply.effects.forEach((e) => {
+        if (e.type === "currency") {
+          let matchedI = 0;
+          const currencyToChange = userCurrenciesCopy.find((uc, idx) => {
+            if (uc.currency.keyWord === e.keyWord) {
+              matchedI = idx;
+              return uc;
+            }
+          });
+          if (currencyToChange) {
+            currencyToChange.userValue += e.value as number;
+            userCurrenciesCopy[matchedI] = currencyToChange;
+            setUserCurrencies(userCurrenciesCopy);
+          }
+        }
+      });
+    }
+    navigate(`/testing/${reply.linkToSectionId}`);
+  };
+
+  const handleUserCurrency = (key: string, val: any) => {
+    if (val === "" || (!isNaN(val) && !isNaN(parseFloat(val)))) {
+      const userCopy = [...userCurrencies];
+      let matchedi = 0;
+      const match = userCopy.find((uc, idx) => {
+        if (uc.currency.keyWord === key) {
+          matchedi = idx;
+          return uc;
+        }
+      });
+      if (match) {
+        match.userValue = parseInt(val);
+        userCopy[matchedi] = match;
+      }
+      setUserCurrencies(userCopy);
     } else {
-        return (
-            <>
-                <Loading isLoading={isLoading} />
-                {userCurrencies.map(c => (
-                    <div key={c.currency.keyWord}>
-                        {settings?.showCurrencies?.includes(c.currency.keyWord) && <p>{c.currency.displayName}: {c.userValue}</p>}
-                    </div>
-                ))}
-                {screen && <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
-                    <ScreenContent key={screen.id}>
-                        <TextWrapper id='fade-in-element'>
-                            {parse(DOMPurify.sanitize(screen.text, { USE_PROFILES: { html: true } }))}
-                            {/* <TypeAnimation key={screen.text} cursor={false} sequence={[screen.text]} style={{ width: '300px', background: 'transparent' }} wrapper='div' speed={80} /> */}
-                        </TextWrapper>
-                        <ReplySection id='replies-section'>
-                            {replies && replies.map((reply, index) => (
-                                <ReplyButton onClick={() => handleReplyClick(reply)} key={index}>{reply.text}</ReplyButton>
-                            ))}
-                        </ReplySection>
-                    </ScreenContent>
-                </ScreenContainer>}
-            </>
-        );
+      console.error("not a number!");
     }
+  };
+
+  const startTest = () => {
+    setReadyToTest(true);
+    runFadeIn();
+  };
+
+  const runFadeIn = () => {
+    if (screen) {
+      setTimeout(() => {
+        const element = document.getElementById("fade-in-element");
+        if (element) {
+          const arr = Array.from(element.children);
+          arr.forEach((el) => {
+            el.classList.add("fade-out");
+          });
+          setTimeout(() => {
+            setTimeout(() => {
+              element.classList.add("ready");
+            }, 50);
+            recursiveAddClass(0, arr);
+          }, 1000);
+        }
+      }, 1);
+    }
+  };
+
+  const recursiveAddClass = (i: number, el: any[]) => {
+    setTimeout(() => {
+      if (i < el.length) {
+        el[i].classList.add("fade-in");
+        i++;
+        recursiveAddClass(i, el);
+      } else {
+        const replies = document.getElementById("replies-section");
+        replies?.classList.add("ready");
+      }
+    }, i * 500);
+  };
+
+  if (!readyToTest) {
+    return (
+      <FormContainer>
+        <FormTitle>User Starts With</FormTitle>
+        {userCurrencies.map((curr, index) => (
+          <CurrencyRow key={"curr" + index}>
+            <CurrencyLabel>{curr.currency.displayName}</CurrencyLabel>
+            <CurrencyInput type="number" value={curr.userValue} onChange={(e) => handleUserCurrency(curr.currency.keyWord, e.target.value)} />
+          </CurrencyRow>
+        ))}
+        <SubmitButton onClick={startTest}>Start Test</SubmitButton>
+      </FormContainer>
+    );
+  } else {
+    return (
+      <>
+        <Loading isLoading={isLoading} />
+        {userCurrencies.map((c) => (
+          <div key={c.currency.keyWord}>
+            {settings?.showCurrencies?.includes(c.currency.keyWord) && (
+              <p>
+                {c.currency.displayName}: {c.userValue}
+              </p>
+            )}
+          </div>
+        ))}
+        {screen && (
+          <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
+            <ScreenContent key={screen.id}>
+              <TextWrapper id="fade-in-element">{parse(DOMPurify.sanitize(screen.text, { USE_PROFILES: { html: true } }))}</TextWrapper>
+              <ReplySection id="replies-section">
+                {replies &&
+                  replies.map((reply, index) => (
+                    <ReplyButton onClick={() => handleReplyClick(reply)} key={index}>
+                      {reply.text}
+                    </ReplyButton>
+                  ))}
+              </ReplySection>
+            </ScreenContent>
+          </ScreenContainer>
+        )}
+      </>
+    );
+  }
 };
 
 export default TestScreen;
 
-const ScreenContainer = styled.div<{ background: string | undefined, bgColor: string | undefined }>`
+const ScreenContainer = styled.div<{ background: string | undefined; bgColor: string | undefined }>`
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-image: url(${props => props.background});
-  background-color: ${props => props.bgColor};
+  background-image: url(${(props) => props.background});
+  background-color: ${(props) => props.bgColor};
   background-size: cover;
   background-position: center;
 `;
@@ -271,20 +271,20 @@ const ScreenContent = styled.div`
 `;
 
 const TextWrapper = styled.div`
-    height: 225px;
-    max-height: 225px;
+  height: 225px;
+  max-height: 225px;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  .fade-in {
+    opacity: 1 !important;
+  }
+  .fade-out {
     opacity: 0;
-    transition: opacity .5s ease-in-out;
-    .fade-in {
-        opacity: 1 !important;
-        }
-    .fade-out { 
-        opacity: 0;
-        transition: opacity 1s ease-in-out;
-    }
-    &.ready {
-        opacity: 1;
-    }
+    transition: opacity 1s ease-in-out;
+  }
+  &.ready {
+    opacity: 1;
+  }
 `;
 
 const FormContainer = styled.div`
@@ -353,7 +353,7 @@ const ReplySection = styled.div`
   align-items: center;
   gap: 10px;
   opacity: 0;
-    transition: opacity 1s ease-in-out;
+  transition: opacity 1s ease-in-out;
   &.ready {
     opacity: 1;
   }

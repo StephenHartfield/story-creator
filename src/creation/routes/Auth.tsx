@@ -30,24 +30,10 @@ const Auth: React.FC = () => {
   return (
     <div>
       <h2>{isRegistering ? "Register" : "Login"}</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={isRegistering ? handleRegister : handleLogin}>
-        {isRegistering ? "Register" : "Login"}
-      </button>
-      <button onClick={() => setIsRegistering(!isRegistering)}>
-        {isRegistering ? "Already have an account?" : "Don't have an account?"}
-      </button>
+      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <button onClick={isRegistering ? handleRegister : handleLogin}>{isRegistering ? "Register" : "Login"}</button>
+      <button onClick={() => setIsRegistering(!isRegistering)}>{isRegistering ? "Already have an account?" : "Don't have an account?"}</button>
     </div>
   );
 };
