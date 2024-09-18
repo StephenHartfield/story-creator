@@ -30,7 +30,8 @@ interface ScreenState {
   getScreensByChapterId: (chapterId: string) => Promise<Screen[]>;
   initRepliesForWholeChapter: (screenId: string) => void;
   getScreensByChapterIdSimple: (chapterId: string) => Screen[];
-  updateScreen: (scrn: Screen, save?: boolean) => Promise<void>;
+  updateScreen: (key: string, value: string, id: string, save?: boolean) => void;
+  saveScreen: (s: Screen) => Promise<void>;
   updateScreens: (scrns: Screen[]) => Promise<void>;
 }
 
@@ -83,7 +84,6 @@ const useScreenStore = create<ScreenState>((set, get) => ({
     const screensList = await Promise.all(
       scrns.map(async (scrn) => {
         if (scrn.image && !scrn.imageLocal) {
-          console.log(scrn);
           const fileRef = ref(storage, scrn.image);
           const url = await getDownloadURL(fileRef).catch((e) => console.error(e));
           return { ...scrn, imageLocal: url || "" };
@@ -148,15 +148,15 @@ const useScreenStore = create<ScreenState>((set, get) => ({
     scrn.order = idx + 1;
     await updateDoc(doc(db, screenDBKey, scrn.id), { ...scrn });
   },
-  updateScreen: async (scrn: Screen, save?: boolean) => {
-    const updated = get().screens.map((screen) => (screen.id === scrn.id ? { ...screen, ...scrn } : screen));
+  updateScreen: async (key: string, value: string, id: string) => {
+    const updated = get().screens.map((screen) => (screen.id === id ? { ...screen, [key]: value } : screen));
     set((state) => ({
       ...state,
       screens: updated,
     }));
-    if (save) {
-      await updateDoc(doc(db, screenDBKey, scrn.id), { ...scrn });
-    }
+  },
+  saveScreen: async (s: Screen) => {
+    await updateDoc(doc(db, screenDBKey, s.id), { ...s });
   },
   updateScreens: async (scrns: Screen[]) => {
     const updatedScreens = get().screens.map((screen) => {

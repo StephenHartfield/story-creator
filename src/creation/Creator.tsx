@@ -10,6 +10,7 @@ import useScreenStore from "./stores/ScreenStore";
 import useSettingStore from "./stores/SettingsStore";
 import useCurrencyStore from "./stores/CurrencyStore";
 import useReferenceStore from "./stores/ReferenceStore";
+import useColorService from "./services/ColorsService";
 
 export interface SelectedSection {
   id: string;
@@ -28,6 +29,7 @@ const Creator: React.FC = () => {
   const { initSettings, emptySettings } = useSettingStore();
   const { initCurrencies, emptyCurrencies } = useCurrencyStore();
   const { initReferences, emptyReferences } = useReferenceStore();
+  const { setupColors, emptyColors } = useColorService();
   // const onDragStart = () => {...}
   // const onDragEnd = () => {...}
 
@@ -60,6 +62,9 @@ const Creator: React.FC = () => {
     if (currentProjectId && !activeProject?.id) {
       emptyData();
     }
+    if (activeProject) {
+      setupColors(activeProject);
+    }
   }, [user, activeProject]);
 
   const initData = async (userId: string, activeProjectId?: string) => {
@@ -81,6 +86,7 @@ const Creator: React.FC = () => {
     emptyScreens();
     emptySettings();
     emptyCurrencies();
+    emptyColors();
   };
 
   return (

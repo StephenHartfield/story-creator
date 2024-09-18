@@ -158,6 +158,7 @@ const SidebarButton = styled(Link)`
 
   &:hover {
     background: linear-gradient(to right, #a0a0a0, #6e6e6e);
+    color: lightgreen !important;
   }
 `;
 
@@ -254,6 +255,7 @@ const Content = styled.div`
   background-color: #f5f5f5;
   display: flex;
   justify-content: center;
+  position: relative;
 `;
 
 const Base = styled.div`

@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import useProjectStore from "../stores/ProjectStore";
 import useReferenceStore, { Reference } from "../stores/ReferenceStore";
 import styled from "@emotion/styled";
-import AddIcon from "@mui/icons-material/Add";
 import SingleScreenEdit from "../screens/SingleScreenEdit";
 import { Button } from "@mui/material";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
@@ -14,44 +12,8 @@ interface ReferenceProps {
 
 const References: React.FC<ReferenceProps> = ({ userId }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const navigate = useNavigate();
-  const [colorsToUse, setColorsToUse] = useState<string[]>([]);
   const { activeProject } = useProjectStore();
   const { references, updateReferences, addReference } = useReferenceStore();
-
-  useEffect(() => {
-    if (activeProject) {
-      const fromTheme = [...colorsToUse];
-      const storedColors = localStorage.getItem(`${activeProject.id}-stored-colors`);
-      if (storedColors) {
-        const toArray = storedColors.split(",");
-        const combinedArray = [...new Set([...toArray, ...activeProject.themeColors])];
-        setColorsToUse(combinedArray);
-      } else {
-        setColorsToUse(fromTheme);
-      }
-    }
-  }, [activeProject]);
-
-  const handleAddColorsToUse = (val: string) => {
-    if (activeProject) {
-      const updatedThemeColors = [...colorsToUse, val];
-      if (updatedThemeColors.length > 8) {
-        const copy = [...colorsToUse];
-        const notThemedColors = copy.filter((c) => !activeProject.themeColors.includes(c));
-        notThemedColors.shift();
-        notThemedColors.push(val);
-        const newCombined = [...activeProject.themeColors].concat([...notThemedColors]);
-        const toStorage = newCombined.map((c) => c).join(",");
-        localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
-        setColorsToUse(newCombined);
-      } else {
-        const toStorage = updatedThemeColors.map((c) => c).join(",");
-        localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
-        setColorsToUse(updatedThemeColors);
-      }
-    }
-  };
 
   const createReferenceHandle = async () => {
     if (!userId) {
@@ -99,14 +61,7 @@ const References: React.FC<ReferenceProps> = ({ userId }) => {
                             }}
                             ref={provided.innerRef}
                             {...provided.draggableProps}>
-                            <SingleScreenEdit
-                              dragHandleProps={provided.dragHandleProps}
-                              key={reference.id + index}
-                              reference={reference}
-                              index={index}
-                              colorsToUse={colorsToUse}
-                              handleAddColorsToUse={handleAddColorsToUse}
-                            />
+                            <SingleScreenEdit dragHandleProps={provided.dragHandleProps} key={reference.id + index} reference={reference} index={index} />
                           </div>
                         )}
                       </Draggable>

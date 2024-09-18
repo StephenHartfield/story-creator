@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowDropDown, ArrowDropUp, Check, DragIndicator, Reply, Settings } from "@mui/icons-material";
 import "@rc-component/color-picker/assets/index.css";
-import { Button } from "@mui/material";
+import { Box, Button, colors, Modal } from "@mui/material";
 import styled from "@emotion/styled";
 import useProjectStore from "../stores/ProjectStore";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,35 +11,43 @@ import ScreenTextEditor from "./ScreenTextEditor";
 import { useNavigate } from "react-router-dom";
 import useReferenceStore, { Reference } from "../stores/ReferenceStore";
 import useScreenStore, { Screen } from "../stores/ScreenStore";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { ref, uploadBytesResumable } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
-import { Draggable } from "react-beautiful-dnd";
+import ReferenceRequirement, { ReferRequirement } from "./ReferenceRequirement";
+import AddOnsPopover from "./AddOnsPopover";
+import ImagePopover from "./ImagePopover";
+import RequirementsPopover from "./RequirementsPopover";
+import useColorService from "../services/ColorsService";
 
 interface Data {
   id: string;
   text: string;
+  title?: string;
   imageLocal?: string;
+  requirements?: ReferRequirement[];
   type: "reference" | "screen";
 }
 
+type Key = "image" | "imageLocal" | "text" | "title";
+
 interface EditorProps {
   index: number;
-  colorsToUse: string[];
   dragHandleProps: any;
-  handleAddColorsToUse: (val: string) => void;
   addImageFile?: (file: File) => void;
   reference?: Reference;
   screen?: Screen;
 }
 
-const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandleProps, handleAddColorsToUse, addImageFile, reference, screen }) => {
+const SingleScreenEdit: React.FC<EditorProps> = ({ index, dragHandleProps, addImageFile, reference, screen }) => {
   const [dataToUse, setDataToUse] = useState<Data>();
   const [isZipped, setIsZipped] = useState<boolean>(true);
   const [imageToUpload, setImageToUpload] = useState<File>();
+  const [chapterSelectorOpen, setChapterSelectorOpen] = useState<boolean>(false);
   const { activeProject } = useProjectStore();
-  const { updateReference, deleteReference } = useReferenceStore();
-  const { updateScreen, deleteScreen } = useScreenStore();
+  const { updateReference, deleteReference, saveReference } = useReferenceStore();
+  const { updateScreen, deleteScreen, saveScreen } = useScreenStore();
   const navigate = useNavigate();
+  const { colors, addColor } = useColorService();
 
   useEffect(() => {
     if (reference?.id) {
@@ -49,13 +57,11 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandl
     }
   }, [reference, screen]);
 
-  const handleChange = (key: "imageLocal" | "image" | "text", value: string) => {
+  const handleChange = (key: Key, value: string) => {
     if (reference?.id) {
-      const refCopy = { ...reference, [key]: value };
-      updateReference(refCopy);
+      updateReference(key, value, reference.id);
     } else if (screen?.id) {
-      const scrnCopy = { ...screen, [key]: value };
-      updateScreen(scrnCopy);
+      updateScreen(key, value, screen.id);
     }
   };
 
@@ -75,13 +81,8 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandl
   };
 
   const deleteImageHandle = () => {
-    if (reference?.id) {
-      const refCopy = { ...reference, imageLocal: "", image: "" };
-      updateReference(refCopy);
-    } else if (screen?.id) {
-      const scrnCopy = { ...screen, imageLocal: "", image: "" };
-      updateScreen(scrnCopy);
-    }
+    handleChange("imageLocal", "");
+    handleChange("image", "");
     // removing image from storage should be done elsewhere.
   };
 
@@ -92,24 +93,37 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandl
       }
       setImageToUpload(event.target.files[0]);
       const imageUrl = URL.createObjectURL(event.target.files[0]);
-      handleChange("imageLocal", imageUrl);
       if (event.target.files) {
-        if (reference?.id) {
-          const refCopy = { ...reference, imageLocal: imageUrl, image: `${activeProject?.id}/${event.target.files[0].name}` };
-          updateReference(refCopy);
-        } else if (screen?.id) {
-          const scrnCopy = { ...screen, imageLocal: imageUrl, image: `${activeProject?.id}/${event.target.files[0].name}` };
-          updateScreen(scrnCopy);
-        }
+        handleChange("imageLocal", imageUrl);
+        handleChange("image", `${activeProject?.id}/${event.target.files[0].name}`);
       }
+    }
+  };
+  const updateRequirement = (requirement: ReferRequirement) => {
+    if (reference?.id) {
+      const refCopy = { ...reference };
+      const reqCopy = refCopy.requirements || [];
+      reqCopy.push(requirement);
+      updateReference("requirements", reqCopy, reference.id);
+      toggleRequirementsPopup();
+    }
+  };
+
+  const toggleRequirementsPopup = async () => {
+    setChapterSelectorOpen(!chapterSelectorOpen);
+  };
+
+  const handleAddColorsToUse = (val: string) => {
+    if (activeProject?.id) {
+      addColor(activeProject, val);
     }
   };
 
   const saveHandle = async () => {
     if (reference?.id) {
-      updateReference(reference, true);
+      saveReference(reference);
     } else if (screen?.id) {
-      updateScreen(screen, true);
+      saveScreen(screen);
     }
     if (imageToUpload) {
       try {
@@ -137,84 +151,108 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, colorsToUse, dragHandl
 
   if (dataToUse?.id && activeProject) {
     return (
-      <SectionGroup zipped={isZipped}>
-        <HeaderWrapper>
-          {isZipped && (
-            <LeftWrapper {...dragHandleProps}>
-              <DragIndicator />
-            </LeftWrapper>
-          )}
-          <TextWrapper>
+      <>
+        <SectionGroup zipped={isZipped}>
+          <HeaderWrapper>
             {isZipped ? (
-              parse(
-                DOMPurify.sanitize(dataToUse.text, {
-                  USE_PROFILES: { html: true },
-                })
-              )
+              <LeftWrapper {...dragHandleProps}>
+                <DragIndicator />
+              </LeftWrapper>
             ) : (
-              <h2 style={{ marginTop: "0", textAlign: "center" }}>Screen {index + 1}</h2>
+              <div style={{ width: "50px", height: "50px" }}></div>
             )}
-          </TextWrapper>
-          <RightWrapper>
-            <StyledButton title="Settings" onClick={() => navigate(`/settings/screens/${dataToUse.id}`)}>
-              <Settings />
-            </StyledButton>
-            <StyledButton title="Test Screen" onClick={() => navigate(`/testing/${dataToUse.id}`)}>
-              <Check />
-            </StyledButton>
-            <StyledButton title="Edit Replies" onClick={() => navigate(`screens/${dataToUse.id}`)}>
-              <Reply />
-            </StyledButton>
-            <StyledButton title="Open Screen" onClick={() => setIsZipped(!isZipped)}>
-              {!isZipped ? <ArrowDropUp /> : <ArrowDropDown />}
-            </StyledButton>
-          </RightWrapper>
-        </HeaderWrapper>
+            {screen?.id ? (
+              <TextWrapper>
+                {isZipped ? (
+                  parse(
+                    DOMPurify.sanitize(dataToUse.text, {
+                      USE_PROFILES: { html: true },
+                    })
+                  )
+                ) : (
+                  <h2 style={{ marginTop: "0", textAlign: "center" }}>Screen {index + 1}</h2>
+                )}
+              </TextWrapper>
+            ) : (
+              <TextWrapperTitle>
+                <TitleInput type="text" placeholder="Title" onChange={(e) => handleChange("title", e.target.value)} />
+              </TextWrapperTitle>
+            )}
+            <RightWrapper>
+              <StyledButton title="Settings" onClick={() => navigate(`/settings/screens/${dataToUse.id}`)}>
+                <Settings />
+              </StyledButton>
+              <StyledButton title="Test Screen" onClick={() => navigate(`/testing/${dataToUse.id}`)}>
+                <Check />
+              </StyledButton>
+              {screen?.id && (
+                <StyledButton title="Edit Replies" onClick={() => navigate(`screens/${dataToUse.id}`)}>
+                  <Reply />
+                </StyledButton>
+              )}
+              <StyledButton title="Open Screen" onClick={() => setIsZipped(!isZipped)}>
+                {!isZipped ? <ArrowDropUp /> : <ArrowDropDown />}
+              </StyledButton>
+            </RightWrapper>
+          </HeaderWrapper>
 
-        <BodyWrapper zipped={isZipped}>
-          <ScreenTextEditor
-            value={dataToUse.text}
-            activeProject={activeProject}
-            colorsToUse={colorsToUse}
-            addColor={(val: string) => handleAddColorsToUse(val)}
-            handleChange={(val: string) => handleSectionChange(val)}
-          />
-          <ActionButtons>
-            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e)} style={{ display: "none" }} id={`upload-${index}`} />
-            <ActionButton as="label" htmlFor={`upload-${index}`}>
-              Add Image
-            </ActionButton>
-            <ActionButton type="button">Add Sound</ActionButton>
-            <RemoveButton type="button" onClick={removeHandle}>
-              <DeleteIcon />
-            </RemoveButton>
-            <ActionButton isSave={true} onClick={saveHandle}>
-              SAVE
-            </ActionButton>
-          </ActionButtons>
-          <ImageList>
-            {dataToUse.imageLocal && (
-              <ImageContainer>
-                <StyledImg src={dataToUse.imageLocal} alt={`Section ${index + 1} Image`} />
-                <DeleteButton onClick={deleteImageHandle}>
+          <BodyWrapper zipped={isZipped}>
+            <ScreenTextEditor
+              value={dataToUse.text}
+              colorsToUse={colors}
+              addColor={(val: string) => handleAddColorsToUse(val)}
+              handleChange={(val: string) => handleSectionChange(val)}
+            />
+            <ActionButtons>
+              <div>
+                <AddOnsPopover handleImageUpload={handleImageUpload} toggleRequirementsPopup={toggleRequirementsPopup} reference={reference} />
+                {dataToUse.imageLocal && <ImagePopover imageSrc={dataToUse.imageLocal} deleteImageHandle={deleteImageHandle} />}
+                {dataToUse.requirements?.length ? <RequirementsPopover requirements={dataToUse.requirements} /> : null}
+              </div>
+              <div>
+                <RemoveButton type="button" onClick={removeHandle}>
                   <DeleteIcon />
-                </DeleteButton>
-              </ImageContainer>
-            )}
-          </ImageList>
-        </BodyWrapper>
-      </SectionGroup>
+                </RemoveButton>
+                <ActionButton isSave={true} onClick={saveHandle}>
+                  SAVE
+                </ActionButton>
+              </div>
+            </ActionButtons>
+          </BodyWrapper>
+        </SectionGroup>
+        <Modal open={chapterSelectorOpen} onClose={toggleRequirementsPopup} aria-labelledby="modal-title" aria-describedby="modal-description">
+          <Box sx={style}>
+            <h2>How User Gets Access</h2>
+            <ReferenceRequirement addRequirement={updateRequirement}></ReferenceRequirement>
+          </Box>
+        </Modal>
+      </>
     );
   }
 };
 
 export default SingleScreenEdit;
 
+const style = {
+  position: "absolute" as "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 500,
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  p: 4,
+  borderRadius: "8px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
 const HeaderWrapper = styled.div`
   display: flex;
   width: 100%;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   max-height: 50px;
 `;
 
@@ -233,7 +271,14 @@ const LeftWrapper = styled.div`
 const TextWrapper = styled.div`
   width: 400px;
   overflow: hidden;
-  height: 100%;
+  height: 40px;
+`;
+
+const TextWrapperTitle = styled.div`
+  width: 400px;
+  overflow: hidden;
+  height: 40px;
+  display: flex;
 `;
 
 const RightWrapper = styled.div`
@@ -256,34 +301,15 @@ const StyledButton = styled.button`
   width: 33.45px;
 `;
 
-const FormGroup = styled.div`
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-`;
-
-const Label = styled.label`
-  font-weight: bold;
-  margin-bottom: 8px;
-`;
-
-const Input = styled.input`
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-`;
-
-const SectionsContainer = styled.div`
-  margin-bottom: 20px;
-  width: 700px;
+const TitleInput = styled.input`
+  font-size: 22px;
 `;
 
 const SectionGroup = styled.div<{ zipped: boolean }>`
   background-color: #e6e6e6;
   width: 650px;
   max-width: 650px;
-  padding: ${(props) => (props.zipped ? "5px 15px 5px" : "15px 15px 30px")};
+  padding: ${(props) => (props.zipped ? "5px 15px 5px" : "5px 15px 30px")};
   margin-bottom: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -292,22 +318,21 @@ const SectionGroup = styled.div<{ zipped: boolean }>`
   align-items: center;
   transition: height 0.5s ease-in-out;
   overflow: hidden;
-  height: ${(props) => (props.zipped ? "44px" : "450px")};
+  height: ${(props) => (props.zipped ? "44px" : "460px")};
 `;
 
 const ActionButtons = styled.div`
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  width: 100%;
   gap: 10px;
-`;
-
-const BButton = styled.button`
-  padding: 10px 15px;
-  font-size: 14px;
-  border-radius: 5px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  margin-top: 10px;
+  div {
+    display: flex;
+    button {
+      margin: 0 5px;
+    }
+  }
 `;
 
 const ActionButton = styled(Button)<{ isSave?: boolean }>`
@@ -328,30 +353,6 @@ const RemoveButton = styled(Button)`
 
   &:hover {
     background-color: #c82333;
-  }
-`;
-
-const AddButton = styled(Button)`
-  background-color: #007bff;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-
-  &:hover {
-    background-color: #0056b3;
-  }
-`;
-
-const SubmitButton = styled(Button)`
-  background-color: #28a745;
-  color: white;
-  width: 200px;
-  margin: 0 auto;
-
-  &:hover {
-    background-color: #218838;
   }
 `;
 

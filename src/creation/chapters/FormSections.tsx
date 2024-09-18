@@ -1,38 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import { ArrowDropDown, ArrowDropUp, Check, DragIndicator, Image, Reply, Settings, VolumeUp } from "@mui/icons-material";
+import { Image, Settings, VolumeUp } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
-import parse from "html-react-parser";
-import DOMPurify from "dompurify";
-import { Chapter } from "../stores/ChapterStore";
+import useChapterStore, { Chapter } from "../stores/ChapterStore";
 import { ProjectSlim } from "../stores/ProjectStore";
-import useScreenStore, { Screen, screenDBKey } from "../stores/ScreenStore";
-import ScreenTextEditor from "../screens/ScreenTextEditor";
+import useScreenStore, { Screen } from "../stores/ScreenStore";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import SingleScreenEdit from "../screens/SingleScreenEdit";
+import ImagePopover from "../screens/ImagePopover";
 
 interface FSProps {
   chapter: Chapter;
-  screensL: Screen[];
   submit: (screens: Screen[], chapter: Chapter) => void;
   activeProject: ProjectSlim;
   addImageFile: (file: File) => void;
   addScreen: () => {};
-  removeScreen: (id: string) => void;
 }
 
-const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProject, addImageFile, addScreen, removeScreen }) => {
+const FormSections: React.FC<FSProps> = ({ chapter, submit, activeProject, addImageFile, addScreen }) => {
   const [title, setTitle] = useState<string>("");
   const [chImage, setChImage] = useState<string>("");
   const [chImageLocal, setChImageLocal] = useState<string>("");
   const [sections, setSections] = useState<Screen[]>([]);
-  const [colorsToUse, setColorsToUse] = useState<string[]>([]);
   const navigate = useNavigate();
   const { screens, getScreensByChapterId, updateScreens } = useScreenStore();
+  const { updateChapter } = useChapterStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageClick = (e: any) => {
@@ -60,40 +53,8 @@ const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProj
     }
   }, [chapter, screens]);
 
-  useEffect(() => {
-    if (activeProject) {
-      const fromTheme = [...colorsToUse];
-      const storedColors = localStorage.getItem(`${activeProject.id}-stored-colors`);
-      if (storedColors) {
-        const toArray = storedColors.split(",");
-        const combinedArray = [...new Set([...toArray, ...activeProject.themeColors])];
-        setColorsToUse(combinedArray);
-      } else {
-        setColorsToUse(fromTheme);
-      }
-    }
-  }, [activeProject]);
-
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
-  };
-
-  const handleAddColorsToUse = (val: string) => {
-    const updatedThemeColors = [...colorsToUse, val];
-    if (updatedThemeColors.length > 8) {
-      const copy = [...colorsToUse];
-      const notThemedColors = copy.filter((c) => !activeProject.themeColors.includes(c));
-      notThemedColors.shift();
-      notThemedColors.push(val);
-      const newCombined = [...activeProject.themeColors].concat([...notThemedColors]);
-      const toStorage = newCombined.map((c) => c).join(",");
-      localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
-      setColorsToUse(newCombined);
-    } else {
-      const toStorage = updatedThemeColors.map((c) => c).join(",");
-      localStorage.setItem(`${activeProject.id}-stored-colors`, toStorage);
-      setColorsToUse(updatedThemeColors);
-    }
   };
 
   const handleImageUpload = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,17 +66,23 @@ const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProj
         setChImageLocal(imageUrl);
         return;
       }
-      const newSections = [...sections];
-      newSections[index].imageLocal = imageUrl;
-      newSections[index].image = `${activeProject.id}/${event.target.files[0].name}`;
-      setSections(newSections);
     }
+  };
+
+  const deleteChImage = () => {
+    setChImage("");
+    setChImageLocal("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const ch = { ...chapter, title: title, image: chImage };
     submit(sections, ch);
+  };
+
+  const saveChapter = () => {
+    const ch = { ...chapter, title: title, image: chImage, imageLocal: chImageLocal };
+    updateChapter(ch);
   };
 
   const onDragEnd = (result: any) => {
@@ -145,7 +112,10 @@ const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProj
             <Settings />
           </StyledButton>
           <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => handleImageUpload(999, e)} style={{ display: "none" }} />
-          {chImageLocal && <img src={chImageLocal} style={{ width: "40px" }} />}
+          {chImageLocal && <ImagePopover deleteImageHandle={deleteChImage} imageSrc={chImageLocal} />}
+          <ActionButton isSave={true} onClick={saveChapter}>
+            SAVE
+          </ActionButton>
         </ActionButtons>
       </FormGroup>
 
@@ -169,8 +139,6 @@ const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProj
                           dragHandleProps={provided.dragHandleProps}
                           screen={section}
                           index={index}
-                          colorsToUse={colorsToUse}
-                          handleAddColorsToUse={handleAddColorsToUse}
                           addImageFile={addImageFile}
                         />
                       </div>
@@ -187,7 +155,7 @@ const FormSections: React.FC<FSProps> = ({ chapter, screensL, submit, activeProj
         </AddButton>
       </SectionsContainer>
 
-      <SubmitButton onClick={handleSubmit}>Submit</SubmitButton>
+      <SubmitButton onClick={handleSubmit}>Save All</SubmitButton>
     </FormContainer>
   );
 };

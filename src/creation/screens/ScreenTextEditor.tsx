@@ -20,19 +20,17 @@ import {
 import { FormatAlignCenter, FormatAlignLeft, FormatAlignRight, FormatAlignJustify, ArrowDropDown, ArrowDropUp } from "@mui/icons-material";
 import ColorPicker from "@rc-component/color-picker";
 import "@rc-component/color-picker/assets/index.css";
-import { Button, Popover } from "@mui/material";
+import { Popover } from "@mui/material";
 import styled from "@emotion/styled";
-import { ProjectSlim } from "../stores/ProjectStore";
 
 interface EditorProps {
   handleChange: (val: string) => void;
-  activeProject: ProjectSlim;
   value: string;
   colorsToUse: string[];
   addColor: (val: string) => void;
 }
 
-const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, activeProject, value, colorsToUse, addColor }) => {
+const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, value, colorsToUse, addColor }) => {
   const [html, setHtml] = useState("<div>Start</div>");
   const BtnAlignCenter = createButton("Align center", <FormatAlignCenter style={{ height: "16px" }} />, "justifyCenter");
   const BtnAlignLeft = createButton("Align center", <FormatAlignLeft style={{ height: "16px" }} />, "justifyLeft");
@@ -74,7 +72,7 @@ const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, activeProject, 
     document.execCommand("foreColor", false, fontColor);
   };
 
-  const onChange = (e) => {
+  const onChange = (e: any) => {
     setHtml(e.target.value);
     handleChange(e.target.value);
   };
@@ -114,7 +112,7 @@ const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, activeProject, 
         <Editor style={{ height: "280px", backgroundColor: "white", width: "100%" }} value={html} onChange={onChange}>
           <StyledButton onClick={showToggle}>{showToolbar ? <ArrowDropUp /> : <ArrowDropDown />}</StyledButton>
           {showToolbar && (
-            <>
+            <div>
               <Toolbar style={{ position: "relative" }}>
                 <BtnUndo />
                 <BtnRedo />
@@ -187,7 +185,7 @@ const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, activeProject, 
                   </ColorButton>
                 </Popover>
               </Toolbar>
-            </>
+            </div>
           )}
         </Editor>
       </EditorProvider>

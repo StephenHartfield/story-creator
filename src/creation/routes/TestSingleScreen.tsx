@@ -9,6 +9,8 @@ import useScreenStore, { Screen } from "../stores/ScreenStore";
 import useSettingStore, { Setting } from "../stores/SettingsStore";
 import useCurrencyStore, { Currency } from "../stores/CurrencyStore";
 import useReplyStore, { Reply } from "../stores/ReplyStore";
+import useChapterStore from "../stores/ChapterStore";
+import ReferenceList from "../testing/ReferenceList";
 
 export interface UserCurrency {
   currency: Currency;
@@ -21,11 +23,12 @@ const TestScreen: React.FC = () => {
   const [replies, setReplies] = useState<Reply[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [defaultBg, setDefaultBg] = useState<string>();
+  const [imageBackground, setImageBackground] = useState<string>();
   const [settings, setSettings] = useState<Setting>();
   const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
   const [readyToTest, setReadyToTest] = useState<boolean>(false);
-  const [display, setDisplay] = useState<any>();
   const navigate = useNavigate();
+  const { getChapterById } = useChapterStore();
   const { activeProject } = useProjectStore();
   const { getScreenById } = useScreenStore();
   const { getSettingByScreenId, getSettingByChapterId } = useSettingStore();
@@ -41,6 +44,13 @@ const TestScreen: React.FC = () => {
           const setts = fetchSettings(screen);
           if (setts && !screen.imageLocal) {
             setDefaultBg(setts.defaultBackground);
+          } else if (screen.imageLocal) {
+            setImageBackground(screen.imageLocal);
+          } else {
+            const ch = await getChapterById(screen.chapterId);
+            if (ch) {
+              setImageBackground(ch.imageLocal);
+            }
           }
           setScreen(screen);
           runFadeIn();
@@ -216,17 +226,25 @@ const TestScreen: React.FC = () => {
     return (
       <>
         <Loading isLoading={isLoading} />
-        {userCurrencies.map((c) => (
-          <div key={c.currency.keyWord}>
-            {settings?.showCurrencies?.includes(c.currency.keyWord) && (
-              <p>
-                {c.currency.displayName}: {c.userValue}
-              </p>
-            )}
-          </div>
-        ))}
+        {settings?.showCurrencies?.length ? (
+          <CurrenciesWrapper>
+            CURRENCIES:
+            {userCurrencies.map((c) => (
+              <div key={c.currency.keyWord}>
+                {settings?.showCurrencies?.includes(c.currency.keyWord) && (
+                  <p>
+                    <CName>{c.currency.displayName}:</CName> <CValue>{c.userValue}</CValue>
+                  </p>
+                )}
+              </div>
+            ))}
+          </CurrenciesWrapper>
+        ) : null}
+        <ReferenceWrapper>
+          <ReferenceList userStats={{ currencies: userCurrencies }} />
+        </ReferenceWrapper>
         {screen && (
-          <ScreenContainer background={screen.imageLocal} bgColor={defaultBg}>
+          <ScreenContainer background={imageBackground} bgColor={defaultBg}>
             <ScreenContent key={screen.id}>
               <TextWrapper id="fade-in-element">{parse(DOMPurify.sanitize(screen.text, { USE_PROFILES: { html: true } }))}</TextWrapper>
               <ReplySection id="replies-section">
@@ -268,6 +286,32 @@ const ScreenContent = styled.div`
   background: transparent;
   border-radius: 10px;
   padding: 20px;
+`;
+
+const CurrenciesWrapper = styled.div`
+  position: absolute;
+  top: 50px;
+  left: 50px;
+  border: 1px solid coral;
+  color: darkgreen;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 25px 15px;
+`;
+
+const CName = styled.span`
+  color: black;
+`;
+
+const CValue = styled.span`
+  color: purple;
+`;
+
+const ReferenceWrapper = styled.div`
+  position: absolute;
+  top: 50px;
+  right: 150px;
+  padding: 25px 15px;
 `;
 
 const TextWrapper = styled.div`

@@ -83,7 +83,6 @@ const SingleChapter: React.FC = () => {
     const newScreen: any = { text: "", chapterId: chapterId, projectId: activeProject?.id, order: screens.length + 1 };
     await addScreen(newScreen);
     const newScreens = await getScreensByChapterId(newScreen.chapterId);
-    console.log(newScreens);
     setScreens(newScreens);
   };
 
@@ -109,10 +108,8 @@ const SingleChapter: React.FC = () => {
         <FormSections
           addScreen={addScreenHandle}
           addImageFile={(file: File) => handleImageUploadAdd(file)}
-          removeScreen={(id: string) => removeScreen(id)}
           activeProject={activeProject}
           submit={(screens: Screen[], chapter: Chapter) => submitData(screens, chapter)}
-          screens={screens}
           chapter={chapter}
         />
       )}

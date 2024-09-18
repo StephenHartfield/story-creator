@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { db, storage } from "../../firebaseConfig";
 import { getDownloadURL, ref } from "firebase/storage";
-import useScreenStore, { screenDBKey } from "./ScreenStore";
+import useScreenStore from "./ScreenStore";
 import useSettingStore from "./SettingsStore";
 
 export interface Chapter {

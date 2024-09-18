@@ -2,14 +2,16 @@ import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } 
 import { create } from "zustand";
 import { db, storage } from "../../firebaseConfig";
 import { getDownloadURL, ref } from "firebase/storage";
+import { ReferRequirement } from "../screens/ReferenceRequirement";
 
 export interface Reference {
   id: string;
+  title: string;
   text: string;
   image?: string;
   imageLocal?: string;
   projectId: string;
-  requirements: [];
+  requirements: ReferRequirement[];
 }
 
 export const referenceDBKey = "references";
@@ -21,7 +23,8 @@ interface ReferenceState {
   deleteReference: (id: string) => Promise<void>;
   addReference: (newReference: Reference) => Promise<string>;
   getReferenceById: (id: string) => Promise<Reference | undefined>;
-  updateReference: (c: Reference, save?: boolean) => Promise<void>;
+  updateReference: (key: string, value: any, id: string, save?: boolean) => void;
+  saveReference: (r: Reference) => Promise<void>;
   updateReferences: (refs: Reference[]) => void;
 }
 
@@ -82,15 +85,15 @@ const useReferenceStore = create<ReferenceState>((set, get) => ({
       return re;
     }
   },
-  updateReference: async (r: Reference, save?: boolean) => {
-    const updatedReferences = get().references.map((reference) => (reference.id === r.id ? { ...reference, ...r } : reference));
+  updateReference: async (key: string, value: any, id: string, save?: boolean) => {
+    const updatedReferences = get().references.map((reference) => (reference.id === id ? { ...reference, [key]: value } : reference));
     set((state) => ({
       ...state,
       references: updatedReferences,
     }));
-    if (save) {
-      await updateDoc(doc(db, referenceDBKey, r.id), { ...r });
-    }
+  },
+  saveReference: async (r: Reference) => {
+    await updateDoc(doc(db, referenceDBKey, r.id), { ...r });
   },
   updateReferences: (updatedRefs: Reference[]) => {
     set((state) => ({

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
 export interface Setting {
