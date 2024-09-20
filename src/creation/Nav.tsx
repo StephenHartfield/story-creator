@@ -81,7 +81,7 @@ const Nav: React.FC<NavProps> = ({ user }) => {
                 <Route path="projects" element={<Projects userId={user?.uid} />} />
                 <Route path="chapters" element={<Chapters userId={user?.uid} />} />
                 <Route path="chapters/:chapterId" element={<SingleChapter />} />
-                <Route path="chapters/:chapterId/screens/:screenId" element={<SingleScreen />} />
+                {/* <Route path="chapters/:chapterId/screens/:screenId" element={<SingleScreen />} /> */}
                 <Route path="testing/:screenId" element={<TestScreen />} />
                 <Route path="currency" element={<CurrencyManager />} />
                 <Route path="settings/screens/:screenId" element={<Settings />} />

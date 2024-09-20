@@ -9,6 +9,8 @@ import useScreenStore, { Screen } from "../stores/ScreenStore";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 import SingleScreenEdit from "../screens/SingleScreenEdit";
 import ImagePopover from "../screens/ImagePopover";
+import { Box, Modal } from "@mui/material";
+import SingleScreen from "../routes/SingleScreen";
 
 interface FSProps {
   chapter: Chapter;
@@ -23,6 +25,8 @@ const FormSections: React.FC<FSProps> = ({ chapter, submit, activeProject, addIm
   const [chImage, setChImage] = useState<string>("");
   const [chImageLocal, setChImageLocal] = useState<string>("");
   const [sections, setSections] = useState<Screen[]>([]);
+  const [singleScreenId, setSingleScreenId] = useState<string>();
+  const [showScreenModal, setShowScreenModal] = useState<boolean>(false);
   const navigate = useNavigate();
   const { screens, getScreensByChapterId, updateScreens } = useScreenStore();
   const { updateChapter } = useChapterStore();
@@ -69,6 +73,11 @@ const FormSections: React.FC<FSProps> = ({ chapter, submit, activeProject, addIm
     }
   };
 
+  const toggleShowScreen = (sectionId?: string) => {
+    setSingleScreenId(sectionId);
+    setShowScreenModal(!showScreenModal);
+  };
+
   const deleteChImage = () => {
     setChImage("");
     setChImageLocal("");
@@ -97,70 +106,97 @@ const FormSections: React.FC<FSProps> = ({ chapter, submit, activeProject, addIm
   };
 
   return (
-    <FormContainer>
-      <FormGroup>
-        <Label htmlFor="title">Title:</Label>
-        <Input type="text" id="title" value={title} onChange={handleTitleChange} />
-        <ActionButtons>
-          <StyledButton onClick={handleImageClick}>
-            <Image />
-          </StyledButton>
-          <StyledButton>
-            <VolumeUp />
-          </StyledButton>
-          <StyledButton onClick={() => navigate(`/settings/chapters/${chapter.id}`)}>
-            <Settings />
-          </StyledButton>
-          <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => handleImageUpload(999, e)} style={{ display: "none" }} />
-          {chImageLocal && <ImagePopover deleteImageHandle={deleteChImage} imageSrc={chImageLocal} />}
-          <ActionButton isSave={true} onClick={saveChapter}>
-            SAVE
-          </ActionButton>
-        </ActionButtons>
-      </FormGroup>
+    <>
+      <FormContainer>
+        <FormGroup>
+          <Label htmlFor="title">Title:</Label>
+          <Input type="text" id="title" value={title} onChange={handleTitleChange} />
+          <ActionButtons>
+            <StyledButton onClick={handleImageClick}>
+              <Image />
+            </StyledButton>
+            <StyledButton>
+              <VolumeUp />
+            </StyledButton>
+            <StyledButton onClick={() => navigate(`/settings/chapters/${chapter.id}`)}>
+              <Settings />
+            </StyledButton>
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={(e) => handleImageUpload(999, e)} style={{ display: "none" }} />
+            {chImageLocal && <ImagePopover deleteImageHandle={deleteChImage} imageSrc={chImageLocal} />}
+            <ActionButton isSave={true} onClick={saveChapter}>
+              SAVE
+            </ActionButton>
+          </ActionButtons>
+        </FormGroup>
 
-      <SectionsContainer>
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="rows">
-            {(provided: any) => (
-              <div ref={provided.innerRef} className="rows">
-                {sections.map((section, index) => (
-                  <Draggable key={`${section.id}-${index}`} draggableId={`${section.id}-${index}`} index={index}>
-                    {(provided: any) => (
-                      <div
-                        style={{
-                          userSelect: "none",
-                          ...provided.draggableProps.style,
-                        }}
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}>
-                        <SingleScreenEdit
-                          key={`${section.id}-${index}`}
-                          dragHandleProps={provided.dragHandleProps}
-                          screen={section}
-                          index={index}
-                          addImageFile={addImageFile}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-        <AddButton type="button" onClick={addScreen}>
-          <AddIcon />
-        </AddButton>
-      </SectionsContainer>
+        <SectionsContainer>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="rows">
+              {(provided: any) => (
+                <div ref={provided.innerRef} className="rows">
+                  {sections.map((section, index) => (
+                    <Draggable key={`${section.id}-${index}`} draggableId={`${section.id}-${index}`} index={index}>
+                      {(provided: any) => (
+                        <div
+                          style={{
+                            userSelect: "none",
+                            ...provided.draggableProps.style,
+                          }}
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}>
+                          <SingleScreenEdit
+                            toggleShowScreen={() => toggleShowScreen(section.id)}
+                            key={`${section.id}-${index}`}
+                            dragHandleProps={provided.dragHandleProps}
+                            screen={section}
+                            index={index}
+                            addImageFile={addImageFile}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+          <AddButton type="button" onClick={addScreen}>
+            <AddIcon />
+          </AddButton>
+        </SectionsContainer>
 
-      <SubmitButton onClick={handleSubmit}>Save All</SubmitButton>
-    </FormContainer>
+        <SubmitButton onClick={handleSubmit}>Save All</SubmitButton>
+      </FormContainer>
+      {singleScreenId && (
+        <Modal open={showScreenModal} onClose={toggleShowScreen} aria-labelledby="modal-title" aria-describedby="modal-description">
+          <Box sx={style}>
+            <SingleScreen toggleShowScreen={toggleShowScreen} screenId={singleScreenId} chapterId={chapter.id} />
+          </Box>
+        </Modal>
+      )}
+    </>
   );
 };
 
 export default FormSections;
+
+const style = {
+  position: "absolute" as "absolute",
+  top: "55%",
+  left: "58%",
+  transform: "translate(-50%, -50%)",
+  width: "auto",
+  height: 450,
+  padding: "30px 70px",
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  p: 4,
+  borderRadius: "8px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
 
 const FormContainer = styled.div`
   max-width: 800px;

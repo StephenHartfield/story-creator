@@ -190,7 +190,7 @@ const ButtonsWrapper = styled.div`
   background-color: #f0f8ff;
   border: 2px solid #0073e6;
   border-radius: 8px;
-  min-width: 400px;
+  min-width: 300px;
 `;
 
 const InstructionText = styled(Typography)`

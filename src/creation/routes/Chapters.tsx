@@ -52,18 +52,15 @@ const Chapters: React.FC<ChaptersProps> = ({ userId }) => {
   return (
     <>
       {activeProject ? (
-        chapters &&
-        chapters.length && (
-          <ChapterSelector
-            deleteChapter={(id) => deleteChapterHandle(id)}
-            createChapter={createChapter}
-            chapters={chapters}
-            activeProject={activeProject}
-            isSelectingChapter={true}
-            isSelectingSection={false}
-            setSelectionId={setSelectedChapter}
-          />
-        )
+        <ChapterSelector
+          deleteChapter={(id) => deleteChapterHandle(id)}
+          createChapter={createChapter}
+          chapters={chapters}
+          activeProject={activeProject}
+          isSelectingChapter={true}
+          isSelectingSection={false}
+          setSelectionId={setSelectedChapter}
+        />
       ) : (
         <span>No Active Project</span>
       )}

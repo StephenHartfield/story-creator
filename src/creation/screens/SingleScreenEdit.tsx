@@ -31,6 +31,7 @@ interface Data {
 type Key = "image" | "imageLocal" | "text" | "title";
 
 interface EditorProps {
+  toggleShowScreen: () => void;
   index: number;
   dragHandleProps: any;
   addImageFile?: (file: File) => void;
@@ -38,7 +39,7 @@ interface EditorProps {
   screen?: Screen;
 }
 
-const SingleScreenEdit: React.FC<EditorProps> = ({ index, dragHandleProps, addImageFile, reference, screen }) => {
+const SingleScreenEdit: React.FC<EditorProps> = ({ toggleShowScreen, index, dragHandleProps, addImageFile, reference, screen }) => {
   const [dataToUse, setDataToUse] = useState<Data>();
   const [isZipped, setIsZipped] = useState<boolean>(true);
   const [imageToUpload, setImageToUpload] = useState<File>();
@@ -175,7 +176,7 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, dragHandleProps, addIm
               </TextWrapper>
             ) : (
               <TextWrapperTitle>
-                <TitleInput type="text" placeholder="Title" onChange={(e) => handleChange("title", e.target.value)} />
+                <TitleInput value={dataToUse.title} type="text" placeholder="Title" onChange={(e) => handleChange("title", e.target.value)} />
               </TextWrapperTitle>
             )}
             <RightWrapper>
@@ -186,7 +187,7 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, dragHandleProps, addIm
                 <Check />
               </StyledButton>
               {screen?.id && (
-                <StyledButton title="Edit Replies" onClick={() => navigate(`screens/${dataToUse.id}`)}>
+                <StyledButton title="Edit Replies" onClick={toggleShowScreen}>
                   <Reply />
                 </StyledButton>
               )}
@@ -200,6 +201,7 @@ const SingleScreenEdit: React.FC<EditorProps> = ({ index, dragHandleProps, addIm
             <ScreenTextEditor
               value={dataToUse.text}
               colorsToUse={colors}
+              isZipped={isZipped}
               addColor={(val: string) => handleAddColorsToUse(val)}
               handleChange={(val: string) => handleSectionChange(val)}
             />

@@ -5,12 +5,11 @@ import ExpandMore from "@mui/icons-material/ExpandMore";
 import ReplyIcon from "@mui/icons-material/StarRate";
 import styled from "@emotion/styled";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db, storage } from "../../firebaseConfig";
-import { getDownloadURL, ref } from "firebase/storage";
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
 import { Chapter } from "../stores/ChapterStore";
 import { ProjectSlim } from "../stores/ProjectStore";
-import useScreenStore, { Screen, screenDBKey } from "../stores/ScreenStore";
+import useScreenStore, { Screen } from "../stores/ScreenStore";
 
 interface Section {
   id: string;
@@ -109,7 +108,7 @@ const ChapterSelector: React.FC<SelectorProps> = (props: SelectorProps) => {
                             <SectionNumber>
                               {chapter.order}.{section.order}
                             </SectionNumber>
-                            {section.text}
+                            {parse(DOMPurify.sanitize(section.text, { USE_PROFILES: { html: true } }))}
                           </SectionText>
 
                           {section.imageLocal && <ThumbnailImage src={section.imageLocal} alt={`Section ${section.order}`} />}
@@ -154,6 +153,8 @@ const ChapterSelectorContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 450px;
+  overflow-y: scroll;
 `;
 
 const ChaptersContainer = styled.div`
@@ -176,6 +177,7 @@ const SectionText = styled.span`
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+  max-height: 40px;
 `;
 
 const ThumbnailImage = styled.img`

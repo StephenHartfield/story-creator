@@ -6,8 +6,13 @@ import useProjectStore from "../stores/ProjectStore";
 import useScreenStore, { Screen } from "../stores/ScreenStore";
 import useReplyStore, { Reply } from "../stores/ReplyStore";
 
-const SingleChapter: React.FC = () => {
-  const { chapterId, screenId } = useParams<{ chapterId: string; screenId: string }>();
+interface ScreenProps {
+  screenId: string;
+  chapterId: string;
+  toggleShowScreen: () => void;
+}
+
+const SingleScreen: React.FC<ScreenProps> = ({ screenId, chapterId, toggleShowScreen }) => {
   const [screen, setScreen] = useState<Screen>();
   const [replies, setReplies] = useState<Reply[]>([]);
   const navigate = useNavigate();
@@ -51,7 +56,7 @@ const SingleChapter: React.FC = () => {
             await addReply(r);
           }
         });
-        navigate(`/chapters/${chapterId}`);
+        toggleShowScreen();
       } catch (e) {
         console.error(e);
       }
@@ -62,7 +67,6 @@ const SingleChapter: React.FC = () => {
     const newReply: any = { text: "", screenId: screenId, order: replies.length + 1, requirements: [], effects: [] };
     await addReply(newReply);
     const newReplies = await getRepliesByScreenId(newReply.screenId);
-    console.log(newReplies);
     setReplies(newReplies);
   };
 
@@ -77,8 +81,8 @@ const SingleChapter: React.FC = () => {
   };
 
   return (
-    <>
-      <StyledLink to={`/chapters/${chapterId}`}>Back to List</StyledLink>
+    <SScreen>
+      <StyledTitle>Replies</StyledTitle>
       {activeProject && screen && (
         <RepliesCreator
           addReply={addReplyHandle}
@@ -90,23 +94,23 @@ const SingleChapter: React.FC = () => {
           replies={replies}
         />
       )}
-    </>
+    </SScreen>
   );
 };
 
-export default SingleChapter;
+export default SingleScreen;
 
-const StyledLink = styled(Link)`
-  background-color: coral;
-  border: 2px solid lightgreen;
-  color: white !important;
+const SScreen = styled.div`
+  max-height: 450px;
+  padding: 30px 10px;
+  overflow-y: scroll;
+`;
+
+const StyledTitle = styled.h2`
+  color: purple;
   border-radius: 8px;
   width: 150px;
   padding: 10px 25px;
   text-align: center;
-  margin-bottom: 20px;
-  &:hover {
-    background-color: lightgreen;
-    border-color: coral;
-  }
+  margin: 0 auto;
 `;

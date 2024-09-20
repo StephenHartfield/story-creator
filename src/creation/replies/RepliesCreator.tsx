@@ -10,6 +10,8 @@ import useChapterStore from "../stores/ChapterStore";
 import { Screen } from "../stores/ScreenStore";
 import useCurrencyStore from "../stores/CurrencyStore";
 import useReplyStore, { Reply } from "../stores/ReplyStore";
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
 
 interface RepliesCProps {
   submit: (repls: Reply[], scrn: Screen) => Promise<void>;
@@ -52,9 +54,10 @@ const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
     setCurrencyOpts(currencies.map((c) => ({ value: c.keyWord, label: c.displayName })));
   };
 
-  const toggleChapterSelector = async (index: number) => {
-    setIsLoading(true);
-    setIndexToAddLinkTo(index);
+  const toggleChapterSelector = async (index?: number) => {
+    if (index !== null && index !== undefined) {
+      setIndexToAddLinkTo(index);
+    }
     setChapterSelectorOpen(!chapterSelectorOpen);
   };
 
@@ -81,7 +84,7 @@ const RepliesCreator: React.FC<RepliesCProps> = (props: RepliesCProps) => {
       <Loading isLoading={isLoading} />
       <RepliesCreatorContainer>
         {/* Section Text */}
-        <SectionText>{props.screen?.text}</SectionText>
+        <SectionText>{parse(DOMPurify.sanitize(props.screen?.text, { USE_PROFILES: { html: true } }))}</SectionText>
 
         {/* Dynamic Replies */}
         {replies.map((reply, index) => (
@@ -122,7 +125,7 @@ export default RepliesCreator;
 
 const style = {
   position: "absolute" as "absolute",
-  top: "50%",
+  top: "55%",
   left: "50%",
   transform: "translate(-50%, -50%)",
   width: 800,

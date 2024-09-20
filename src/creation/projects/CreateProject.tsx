@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { TextField, Button } from "@mui/material";
-import { collection, addDoc } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
 import Loading from "../../Loading";
-import { projectDBKey } from "../stores/ProjectStore";
+import useProjectStore from "../stores/ProjectStore";
 
 interface ProjectFormProps {
   userId: string;
@@ -14,6 +12,7 @@ const CreateProject: React.FC<ProjectFormProps> = ({ userId, exit }) => {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>();
+  const { addProject } = useProjectStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +39,7 @@ const CreateProject: React.FC<ProjectFormProps> = ({ userId, exit }) => {
         themeColors: [],
       };
 
-      await addDoc(collection(db, projectDBKey), project);
+      await addProject(project);
       setMsg("Successfully Created " + title + " project!");
       setTitle("");
 

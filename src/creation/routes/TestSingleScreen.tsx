@@ -11,6 +11,8 @@ import useCurrencyStore, { Currency } from "../stores/CurrencyStore";
 import useReplyStore, { Reply } from "../stores/ReplyStore";
 import useChapterStore from "../stores/ChapterStore";
 import ReferenceList from "../testing/ReferenceList";
+import { Box, Modal } from "@mui/material";
+import TestReference from "./TestReference";
 
 export interface UserCurrency {
   currency: Currency;
@@ -27,6 +29,8 @@ const TestScreen: React.FC = () => {
   const [settings, setSettings] = useState<Setting>();
   const [userCurrencies, setUserCurrencies] = useState<UserCurrency[]>([]);
   const [readyToTest, setReadyToTest] = useState<boolean>(false);
+  const [referenceId, setReferenceId] = useState<string>();
+  const [showReference, setShowReference] = useState<boolean>(false);
   const navigate = useNavigate();
   const { getChapterById } = useChapterStore();
   const { activeProject } = useProjectStore();
@@ -196,6 +200,10 @@ const TestScreen: React.FC = () => {
     }
   };
 
+  const toggleShowReference = async () => {
+    setShowReference(!showReference);
+  };
+
   const recursiveAddClass = (i: number, el: any[]) => {
     setTimeout(() => {
       if (i < el.length) {
@@ -241,7 +249,7 @@ const TestScreen: React.FC = () => {
           </CurrenciesWrapper>
         ) : null}
         <ReferenceWrapper>
-          <ReferenceList userStats={{ currencies: userCurrencies }} />
+          <ReferenceList toggleShowReference={toggleShowReference} setReferenceId={setReferenceId} userStats={{ currencies: userCurrencies }} />
         </ReferenceWrapper>
         {screen && (
           <ScreenContainer background={imageBackground} bgColor={defaultBg}>
@@ -258,12 +266,34 @@ const TestScreen: React.FC = () => {
             </ScreenContent>
           </ScreenContainer>
         )}
+        {referenceId && (
+          <Modal open={showReference} onClose={toggleShowReference} aria-labelledby="modal-title" aria-describedby="modal-description">
+            <Box sx={style}>
+              <TestReference referenceId={referenceId} />
+            </Box>
+          </Modal>
+        )}
       </>
     );
   }
 };
 
 export default TestScreen;
+
+const style = {
+  position: "absolute" as "absolute",
+  top: "55%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 500,
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  p: 4,
+  borderRadius: "8px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
 
 const ScreenContainer = styled.div<{ background: string | undefined; bgColor: string | undefined }>`
   display: flex;

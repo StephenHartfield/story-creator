@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Dispatch, SetStateAction, useState } from "react";
 import styled from "@emotion/styled";
 import { Popover, Button, Box } from "@mui/material";
 import { UserCurrency } from "../routes/TestSingleScreen";
@@ -6,10 +6,12 @@ import useReferenceStore from "../stores/ReferenceStore";
 import { ReferRequirement } from "../screens/ReferenceRequirement";
 
 interface Props {
+  setReferenceId: Dispatch<SetStateAction<string | undefined>>;
+  toggleShowReference: () => void;
   userStats: { currencies: UserCurrency[] };
 }
 
-const ReferenceList: React.FC<Props> = ({ userStats }) => {
+const ReferenceList: React.FC<Props> = ({ setReferenceId, toggleShowReference, userStats }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const { references } = useReferenceStore();
 
@@ -33,6 +35,11 @@ const ReferenceList: React.FC<Props> = ({ userStats }) => {
       }
       return false;
     });
+  };
+
+  const handleClick = (referenceId: string) => {
+    toggleShowReference();
+    setReferenceId(referenceId);
   };
 
   const open = Boolean(anchorEl);
@@ -59,7 +66,9 @@ const ReferenceList: React.FC<Props> = ({ userStats }) => {
           {references
             .filter((ref) => meetsRequirements(ref.requirements))
             .map((ref, index) => (
-              <ReferenceTitle key={index}>{ref.title}</ReferenceTitle>
+              <ReferenceTitle onClick={() => handleClick(ref.id)} key={"ref" + index}>
+                {ref.title}
+              </ReferenceTitle>
             ))}
         </Dropdown>
       </Popover>
@@ -84,7 +93,8 @@ const Dropdown = styled(Box)`
   overflow-y: auto;
 `;
 
-const ReferenceTitle = styled.div`
+const ReferenceTitle = styled.button`
+  background-color: black;
   padding: 8px 16px;
   cursor: pointer;
   border-bottom: 1px solid #444;

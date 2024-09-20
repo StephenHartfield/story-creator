@@ -6,6 +6,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { Screen, screenDBKey } from "../stores/ScreenStore";
 import { Reply, Requirement } from "../stores/ReplyStore";
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
 
 interface ReplyRowProps {
   index: number;
@@ -59,8 +61,8 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
       sx={{
         p: 3,
         mb: 3,
-        width: "650px",
-        maxWidth: "650px",
+        width: "450px",
+        maxWidth: "450px",
         border: "2px solid #0066cc",
         borderRadius: "12px",
         backgroundColor: "#e6f7ff",
@@ -111,7 +113,7 @@ const ReplyRow: React.FC<ReplyRowProps> = (props: ReplyRowProps) => {
           </Button>
           {props.reply.linkToSectionId && (
             <Typography variant="body2" sx={{ ml: 2, color: "#004080" }}>
-              {linkedScreen?.text}
+              {linkedScreen && parse(DOMPurify.sanitize(linkedScreen?.text, { USE_PROFILES: { html: true } }))}
             </Typography>
           )}
         </Grid>

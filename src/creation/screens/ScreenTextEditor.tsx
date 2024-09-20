@@ -26,11 +26,12 @@ import styled from "@emotion/styled";
 interface EditorProps {
   handleChange: (val: string) => void;
   value: string;
+  isZipped: boolean;
   colorsToUse: string[];
   addColor: (val: string) => void;
 }
 
-const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, value, colorsToUse, addColor }) => {
+const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, value, isZipped, colorsToUse, addColor }) => {
   const [html, setHtml] = useState("<div>Start</div>");
   const BtnAlignCenter = createButton("Align center", <FormatAlignCenter style={{ height: "16px" }} />, "justifyCenter");
   const BtnAlignLeft = createButton("Align center", <FormatAlignLeft style={{ height: "16px" }} />, "justifyLeft");
@@ -62,6 +63,13 @@ const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, value, colorsTo
       setHtml(value);
     }
   }, [value]);
+
+  useEffect(() => {
+    const show = localStorage.getItem("show-toolbar");
+    if (typeof show === "string") {
+      setShowToolbar(show === "true");
+    }
+  }, [isZipped]);
 
   const handleFontFamily = (fontFamily: string) => {
     document.execCommand("fontName", false, fontFamily);
@@ -103,6 +111,7 @@ const ScreenTextEditor: React.FC<EditorProps> = ({ handleChange, value, colorsTo
 
   const showToggle = (e: any) => {
     e.preventDefault();
+    localStorage.setItem("show-toolbar", !showToolbar === true ? "true" : "false");
     setShowToolbar(!showToolbar);
   };
 

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { db, storage } from "../../firebaseConfig";
+import { db } from "../../firebaseConfig";
 import useScreenStore from "./ScreenStore";
 
 export interface Reply {
@@ -59,7 +59,6 @@ const useReplyStore = create<ReplyState>((set, get) => ({
   getRepliesByScreenId: async (screenId: string) => {
     if (get().repliesMap.hasOwnProperty(screenId)) {
       const sorted = get().repliesMap[screenId].sort((a, b) => a.order - b.order);
-      console.log(sorted);
       return sorted;
     } else {
       useScreenStore.getState().initRepliesForWholeChapter(screenId);
@@ -81,8 +80,6 @@ const useReplyStore = create<ReplyState>((set, get) => ({
   addReply: async (newReply: any) => {
     const replyData = await addDoc(collection(db, repliesDBKey), newReply);
     set((state) => {
-      console.log(state.repliesMap[newReply.screenId]);
-      console.log(state.repliesMap);
       return {
         ...state,
         repliesMap: { ...state.repliesMap, [newReply.screenId]: [...state.repliesMap[newReply.screenId], { ...newReply, id: replyData.id }] },

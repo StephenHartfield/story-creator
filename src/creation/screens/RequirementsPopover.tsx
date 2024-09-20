@@ -4,7 +4,7 @@ import { Popover, Button, List, ListItem, ListItemText } from "@mui/material";
 export interface ReferRequirement {
   startsWith: boolean;
   type: string;
-  value: string;
+  value: number | boolean | undefined;
   keyWord: string;
   greaterThan?: boolean;
 }

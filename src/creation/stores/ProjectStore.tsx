@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { collection, doc, getCountFromServer, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getCountFromServer, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import useChapterStore, { chapterDBKey } from "./ChapterStore";
 import useScreenStore from "./ScreenStore";
@@ -36,6 +36,7 @@ interface ProjectState {
   updateAPStats: (projects: Project[], activeProject: ProjectSlim) => Promise<void>;
   updateActiveProject: (activeProject: ProjectSlim, id: string) => void;
   updateThemeColor: (val: string, projectId: string, isDeleting?: boolean) => void;
+  addProject: (newProject: any) => Promise<void>;
 }
 
 export const projectDBKey = "projects";
@@ -137,6 +138,14 @@ const useProjectStore = create<ProjectState>((set, get) => ({
       }));
       await updateDoc(doc(db, projectDBKey, proj.id), { ...proj });
     }
+  },
+  addProject: async (newProject: any): Promise<string> => {
+    const addedProject = await addDoc(collection(db, projectDBKey), newProject);
+    set((state) => ({
+      ...state,
+      projects: [...state.projects, { ...newProject, id: addedProject.id }],
+    }));
+    return addedProject.id;
   },
 }));
 

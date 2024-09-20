@@ -70,7 +70,7 @@ const useChapterStore = create<ChapterState>((set, get) => ({
     }
     const screens = useScreenStore.getState().getScreensByChapterIdSimple(id);
     screens.forEach(async (s) => {
-      await useScreenStore.getState().deleteScreen(s.id);
+      await useScreenStore.getState().deleteScreen(s.id, id);
     });
     console.log(`Chapter ${id} deleted.`);
   },
